@@ -3,9 +3,11 @@ import type { DataStore } from "data/DataStore";
 import { TaskStatus } from "data/models";
 import { VIEW_TYPE_MLW_NEXT_ACTIONS, NEXT_ACTIONS_ICON } from "views/ViewConstants";
 import { BaseTaskView, type ViewConfig } from "views/BaseTaskView";
+import { FilterBar } from "views/FilterBar";
 
 export class NextActionsView extends BaseTaskView {
 	private showCompleted = false;
+	private filterBar: FilterBar | null = null;
 
 	constructor(leaf: WorkspaceLeaf, store: DataStore) {
 		super(leaf, store);
@@ -36,13 +38,23 @@ export class NextActionsView extends BaseTaskView {
 				void this.renderContent();
 			});
 		}
+		// Insert filter bar between header and list
+		this.filterBar = new FilterBar(this.contentEl, this.store, () => void this.renderContent());
+		this.contentEl.insertBefore(this.filterBar.getContainer(), this.listEl);
+	}
+
+	/** Called by BaseTaskView when AOF changes. */
+	override refresh(): void {
+		this.filterBar?.rebuild();
+		super.refresh();
 	}
 
 	async renderContent(): Promise<void> {
 		this.listEl.empty();
-		const tasks = this.filterByActiveAOF(
+		let tasks = this.filterByActiveAOF(
 			this.store.getTasksByStatus(TaskStatus.NextAction),
 		);
+		if (this.filterBar !== null) tasks = this.filterBar.applyFilters(tasks);
 
 		if (tasks.length === 0 && !this.showCompleted) {
 			this.renderEmpty();

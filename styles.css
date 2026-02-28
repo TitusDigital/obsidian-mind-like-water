@@ -262,6 +262,34 @@
 	border: 1px solid var(--background-modifier-border); font-family: var(--font-interface); outline: none;
 }
 .mlw-aof-selector:focus { border-color: var(--interactive-accent); }
+
+/* ── Filter Bar ──────────────────────────────────────── */
+.mlw-filter-bar {
+	display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+	padding: 8px 16px; border-bottom: 1px solid var(--background-modifier-border);
+}
+.mlw-filter-bar:empty { display: none; }
+.mlw-filter-bar__sep { width: 1px; height: 16px; background: var(--background-modifier-border); margin: 0 2px; }
+.mlw-filter-chip {
+	display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px;
+	font-size: 11px; font-family: var(--font-interface); cursor: pointer;
+	transition: all 0.15s ease; border: 1px solid transparent; user-select: none;
+}
+.mlw-filter-chip--off {
+	background: var(--background-secondary-alt); color: var(--text-faint);
+	border-color: var(--background-modifier-border);
+}
+.mlw-filter-chip--off:hover { color: var(--text-muted); background: var(--background-modifier-hover); }
+.mlw-filter-chip--include {
+	background: rgba(var(--interactive-accent-rgb), 0.15);
+	color: var(--interactive-accent); border-color: rgba(var(--interactive-accent-rgb), 0.3);
+}
+.mlw-filter-chip--exclude {
+	background: rgba(var(--interactive-accent-rgb), 0.15);
+	color: var(--interactive-accent); border-color: rgba(var(--interactive-accent-rgb), 0.3);
+	text-decoration: line-through;
+}
+
 .mlw-view-list { overflow-y: auto; }
 .mlw-view-empty { padding: 32px 16px; text-align: center; color: var(--text-muted); }
 .mlw-view-empty__hint { font-size: 12px; color: var(--text-faint); margin-top: 4px; }

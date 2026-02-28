@@ -3,11 +3,14 @@ import type { DataStore } from "data/DataStore";
 import { TaskStatus, type Task } from "data/models";
 import { VIEW_TYPE_MLW_SCHEDULED, SCHEDULED_ICON } from "views/ViewConstants";
 import { BaseTaskView, type ViewConfig } from "views/BaseTaskView";
+import { FilterBar } from "views/FilterBar";
 
 /** Date bucket labels for the Scheduled view. */
 type Bucket = "Overdue" | "Today" | "This Week" | "Next Week" | "This Month" | "Later" | "No Date";
 
 export class ScheduledView extends BaseTaskView {
+	private filterBar: FilterBar | null = null;
+
 	constructor(leaf: WorkspaceLeaf, store: DataStore) {
 		super(leaf, store);
 	}
@@ -24,11 +27,23 @@ export class ScheduledView extends BaseTaskView {
 		};
 	}
 
+	async onOpen(): Promise<void> {
+		await super.onOpen();
+		this.filterBar = new FilterBar(this.contentEl, this.store, () => void this.renderContent());
+		this.contentEl.insertBefore(this.filterBar.getContainer(), this.listEl);
+	}
+
+	override refresh(): void {
+		this.filterBar?.rebuild();
+		super.refresh();
+	}
+
 	async renderContent(): Promise<void> {
 		this.listEl.empty();
-		const tasks = this.filterByActiveAOF(
+		let tasks = this.filterByActiveAOF(
 			this.store.getTasksByStatus(TaskStatus.Scheduled),
 		);
+		if (this.filterBar !== null) tasks = this.filterBar.applyFilters(tasks);
 
 		if (tasks.length === 0) {
 			this.renderEmpty();
