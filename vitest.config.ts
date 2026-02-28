@@ -7,6 +7,9 @@ export default defineConfig({
 			data: path.resolve(__dirname, "src/data"),
 			editor: path.resolve(__dirname, "src/editor"),
 			components: path.resolve(__dirname, "src/components"),
+			capture: path.resolve(__dirname, "src/capture"),
+			views: path.resolve(__dirname, "src/views"),
+			widgets: path.resolve(__dirname, "src/widgets"),
 			// Obsidian and CM6 are externals at runtime; stub them for tests
 			obsidian: path.resolve(__dirname, "src/__mocks__/obsidian.ts"),
 			"@codemirror/view": path.resolve(__dirname, "src/__mocks__/codemirror-view.ts"),

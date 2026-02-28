@@ -16,6 +16,7 @@ export class DataStore {
 	private plugin: Plugin;
 	private data: MLWData;
 	private saveTimeout: ReturnType<typeof setTimeout> | null = null;
+	private onChangeCallback: (() => void) | null = null;
 
 	constructor(plugin: Plugin) {
 		this.plugin = plugin;
@@ -74,6 +75,17 @@ export class DataStore {
 		await this.plugin.saveData(this.data);
 	}
 
+	// ── Change Notification ─────────────────────────────────────────
+
+	/** Register a callback invoked after any task create/update/delete. */
+	setOnChange(callback: () => void): void {
+		this.onChangeCallback = callback;
+	}
+
+	private notifyChange(): void {
+		this.onChangeCallback?.();
+	}
+
 	// ── ID Generation ───────────────────────────────────────────────
 
 	/** Generate a unique 6-char alphanumeric ID. */
@@ -90,14 +102,14 @@ export class DataStore {
 
 	// ── Task CRUD ───────────────────────────────────────────────────
 
-	/** Create a new task. Returns the created task. */
-	createTask(fields: Partial<Omit<Task, "id" | "created" | "modified">> & {
+	/** Create a new task. Caller may supply a pre-generated `id`. Returns the created task. */
+	createTask(fields: Partial<Omit<Task, "created" | "modified">> & {
 		source_file: string;
 		source_line: number;
 	}): Task {
 		const now = new Date().toISOString();
 		const task: Task = {
-			id: this.generateId(),
+			id: fields.id ?? this.generateId(),
 			status: fields.status ?? TaskStatus.Inbox,
 			area_of_focus: fields.area_of_focus ?? "",
 			project: fields.project ?? null,
@@ -117,6 +129,7 @@ export class DataStore {
 		};
 		this.data.tasks[task.id] = task;
 		this.scheduleSave();
+		this.notifyChange();
 		return task;
 	}
 
@@ -136,6 +149,7 @@ export class DataStore {
 		if (task === undefined) return undefined;
 		Object.assign(task, fields, { modified: new Date().toISOString() });
 		this.scheduleSave();
+		this.notifyChange();
 		return task;
 	}
 
@@ -145,6 +159,7 @@ export class DataStore {
 		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
 		delete this.data.tasks[id];
 		this.scheduleSave();
+		this.notifyChange();
 		return true;
 	}
 
@@ -173,6 +188,18 @@ export class DataStore {
 	/** Count tasks in a given status. */
 	getTaskCountByStatus(status: TaskStatus): number {
 		return Object.values(this.data.tasks).filter(t => t.status === status).length;
+	}
+
+	/** Get all tasks with a given status. */
+	getTasksByStatus(status: TaskStatus): Task[] {
+		return Object.values(this.data.tasks).filter(t => t.status === status);
+	}
+
+	/** Count starred tasks that are not completed or dropped. */
+	getStarredCount(): number {
+		return Object.values(this.data.tasks).filter(
+			t => t.starred && t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped
+		).length;
 	}
 
 	// ── Projects ────────────────────────────────────────────────────
