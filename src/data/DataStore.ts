@@ -155,6 +155,17 @@ export class DataStore {
 		return task;
 	}
 
+	/**
+	 * Mark a task as completed. Discrete function per spec to support
+	 * future recurrence extension. Sets status + completed_date.
+	 */
+	completeTask(id: string): Task | undefined {
+		return this.updateTask(id, {
+			status: TaskStatus.Completed,
+			completed_date: new Date().toISOString(),
+		});
+	}
+
 	/** Delete a task by ID. Returns true if the task existed. */
 	deleteTask(id: string): boolean {
 		if (!(id in this.data.tasks)) return false;
