@@ -26,7 +26,9 @@ export class ScheduledView extends BaseTaskView {
 
 	async renderContent(): Promise<void> {
 		this.listEl.empty();
-		const tasks = this.store.getTasksByStatus(TaskStatus.Scheduled);
+		const tasks = this.filterByActiveAOF(
+			this.store.getTasksByStatus(TaskStatus.Scheduled),
+		);
 
 		if (tasks.length === 0) {
 			this.renderEmpty();

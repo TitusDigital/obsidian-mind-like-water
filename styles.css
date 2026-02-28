@@ -256,6 +256,12 @@
 .mlw-view-header__toggle:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
 .mlw-view-header__toggle--active { background: var(--interactive-accent); color: var(--text-on-accent); border-color: var(--interactive-accent); }
 .mlw-view-header__toggle--active:hover { filter: brightness(1.1); }
+.mlw-aof-selector {
+	font-size: 11px; padding: 2px 6px; border-radius: 4px; cursor: pointer;
+	background: var(--background-secondary-alt); color: var(--text-muted);
+	border: 1px solid var(--background-modifier-border); font-family: var(--font-interface); outline: none;
+}
+.mlw-aof-selector:focus { border-color: var(--interactive-accent); }
 .mlw-view-list { overflow-y: auto; }
 .mlw-view-empty { padding: 32px 16px; text-align: center; color: var(--text-muted); }
 .mlw-view-empty__hint { font-size: 12px; color: var(--text-faint); margin-top: 4px; }

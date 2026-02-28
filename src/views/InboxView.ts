@@ -18,6 +18,7 @@ export class InboxView extends BaseTaskView {
 			title: "Inbox",
 			emptyText: "No unclarified tasks.",
 			emptyHint: "Use Ctrl+Shift+Q to capture a new task.",
+			showAOFSelector: false,
 		};
 	}
 

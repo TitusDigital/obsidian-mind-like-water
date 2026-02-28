@@ -1,6 +1,7 @@
 import { ItemView, type WorkspaceLeaf, TFile } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import type { Task } from "data/models";
+import { ViewState } from "views/ViewState";
 
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
@@ -10,6 +11,8 @@ export interface ViewConfig {
 	title: string;
 	emptyText: string;
 	emptyHint: string;
+	/** Set to false for views that should never filter by AOF (e.g. Inbox). */
+	showAOFSelector?: boolean;
 }
 
 /**
@@ -18,6 +21,8 @@ export interface ViewConfig {
  */
 export abstract class BaseTaskView extends ItemView {
 	protected listEl!: HTMLElement;
+	private unsubscribeViewState: (() => void) | null = null;
+	private aofSelectEl: HTMLSelectElement | null = null;
 
 	constructor(leaf: WorkspaceLeaf, protected readonly store: DataStore) {
 		super(leaf);
@@ -34,15 +39,48 @@ export abstract class BaseTaskView extends ItemView {
 		contentEl.empty();
 		contentEl.addClass("mlw-view");
 
+		const cfg = this.getViewConfig();
 		const header = contentEl.createDiv("mlw-view-header");
-		header.createEl("h4", { text: this.getViewConfig().title });
+		header.createEl("h4", { text: cfg.title });
+
+		if (cfg.showAOFSelector !== false) {
+			this.aofSelectEl = header.createEl("select", { cls: "mlw-aof-selector" });
+			this.populateAOFSelector();
+			this.aofSelectEl.addEventListener("change", () => {
+				ViewState.getInstance().setActiveAOF(this.aofSelectEl?.value ?? "");
+			});
+			this.unsubscribeViewState = ViewState.getInstance().subscribe(() => {
+				this.syncAOFSelector();
+				this.refresh();
+			});
+		}
 
 		this.listEl = contentEl.createDiv("mlw-view-list");
 		await this.renderContent();
 	}
 
 	async onClose(): Promise<void> {
+		this.unsubscribeViewState?.();
+		this.unsubscribeViewState = null;
 		this.contentEl.empty();
+	}
+
+	private populateAOFSelector(): void {
+		if (this.aofSelectEl === null) return;
+		this.aofSelectEl.empty();
+		const allOpt = this.aofSelectEl.createEl("option", { text: "All", value: "" });
+		allOpt.value = "";
+		for (const aof of this.store.getSettings().areasOfFocus) {
+			const opt = this.aofSelectEl.createEl("option", { text: aof.name, value: aof.name });
+			opt.value = aof.name;
+		}
+		this.aofSelectEl.value = ViewState.getInstance().getActiveAOF();
+	}
+
+	private syncAOFSelector(): void {
+		if (this.aofSelectEl !== null) {
+			this.aofSelectEl.value = ViewState.getInstance().getActiveAOF();
+		}
 	}
 
 	/** Called by the plugin when tasks change. */
@@ -104,6 +142,46 @@ export abstract class BaseTaskView extends ItemView {
 		if (line === undefined) return;
 		lines[task.source_line - 1] = line.replace(/^(\s*[-*]\s+)\[ \]/, "$1[x]");
 		await this.app.vault.modify(file, lines.join("\n"));
+	}
+
+	// ── AOF filtering & grouping ─────────────────────────────────
+
+	/** Filter tasks by the global AOF selection. Returns all tasks when "All". */
+	protected filterByActiveAOF(tasks: Task[]): Task[] {
+		const aof = ViewState.getInstance().getActiveAOF();
+		if (aof === "") return tasks;
+		return tasks.filter(t => t.area_of_focus === aof);
+	}
+
+	/** Group tasks by Area of Focus, respecting settings display order. */
+	protected groupByAOF(tasks: Task[]): { name: string; color: string; tasks: Task[] }[] {
+		const aofOrder = this.store.getSettings().areasOfFocus;
+		const grouped = new Map<string, Task[]>();
+
+		for (const task of tasks) {
+			const key = task.area_of_focus || "";
+			const existing = grouped.get(key);
+			if (existing !== undefined) {
+				existing.push(task);
+			} else {
+				grouped.set(key, [task]);
+			}
+		}
+
+		const result: { name: string; color: string; tasks: Task[] }[] = [];
+		for (const aof of aofOrder) {
+			const groupTasks = grouped.get(aof.name);
+			if (groupTasks !== undefined) {
+				groupTasks.sort((a, b) => a.sort_order - b.sort_order);
+				result.push({ name: aof.name, color: aof.color.text, tasks: groupTasks });
+				grouped.delete(aof.name);
+			}
+		}
+		for (const [key, groupTasks] of grouped) {
+			groupTasks.sort((a, b) => a.sort_order - b.sort_order);
+			result.push({ name: key || "Uncategorized", color: "#A0A0A0", tasks: groupTasks });
+		}
+		return result;
 	}
 
 	// ── Shared utilities ──────────────────────────────────────────

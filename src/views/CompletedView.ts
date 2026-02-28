@@ -27,8 +27,9 @@ export class CompletedView extends BaseTaskView {
 		this.listEl.empty();
 		const cutoff = new Date(Date.now() - THIRTY_DAYS_MS).toISOString();
 
-		const tasks = this.store.getTasksByStatus(TaskStatus.Completed)
-			.filter(t => t.completed_date !== null && t.completed_date >= cutoff)
+		const tasks = this.filterByActiveAOF(
+			this.store.getTasksByStatus(TaskStatus.Completed),
+		).filter(t => t.completed_date !== null && t.completed_date >= cutoff)
 			.sort((a, b) => (b.completed_date ?? "").localeCompare(a.completed_date ?? ""));
 
 		if (tasks.length === 0) {
