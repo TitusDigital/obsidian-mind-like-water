@@ -108,9 +108,19 @@ export abstract class BaseTaskView extends ItemView {
 		group.createSpan({ text: name, cls: "mlw-view-group__name" });
 	}
 
-	/** Render a clickable task row with optional complete checkbox. */
+	/** Render a clickable task row with complete checkbox and star toggle. */
 	protected renderTaskRow(task: Task, text: string, metaItems?: string[]): void {
 		const item = this.listEl.createDiv("mlw-view-item");
+
+		// Star toggle
+		const star = item.createDiv({
+			cls: `mlw-view-item__star${task.starred ? " mlw-view-item__star--active" : ""}`,
+		});
+		star.textContent = task.starred ? "\u2605" : "\u2606";
+		star.addEventListener("click", (e) => {
+			e.stopPropagation();
+			this.store.updateTask(task.id, { starred: !task.starred });
+		});
 
 		// Complete checkbox (circle that checks off the task)
 		const check = item.createDiv("mlw-view-item__check");
