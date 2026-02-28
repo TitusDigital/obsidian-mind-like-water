@@ -24,6 +24,7 @@ import {
 import { BaseTaskView } from "views/BaseTaskView";
 import { StatusBarWidget } from "widgets/StatusBarWidget";
 import { runScheduler } from "services/SchedulerService";
+import { registerFocusBlock, registerCompletedBlock } from "codeblocks/registerCodeblocks";
 
 /** All registered view types for cleanup and refresh. */
 const ALL_VIEW_TYPES = [
@@ -102,6 +103,10 @@ export default class MindLikeWaterPlugin extends Plugin {
 		if (Platform.isDesktop) {
 			this.statusBarWidget = new StatusBarWidget(this.addStatusBarItem(), this.store);
 		}
+
+		// ── Codeblock Processors ─────────────────────────────
+		registerFocusBlock(this, this.store);
+		registerCompletedBlock(this, this.store);
 
 		// ── Checkbox Watcher ──────────────────────────────────
 		registerCheckboxWatcher(this, this.store);

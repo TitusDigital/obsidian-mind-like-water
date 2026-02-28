@@ -18,7 +18,7 @@ export class DataStore {
 	private plugin: Plugin;
 	private data: MLWData;
 	private saveTimeout: ReturnType<typeof setTimeout> | null = null;
-	private onChangeCallback: (() => void) | null = null;
+	private onChangeCallbacks = new Set<() => void>();
 
 	constructor(plugin: Plugin) {
 		this.plugin = plugin;
@@ -81,11 +81,17 @@ export class DataStore {
 
 	/** Register a callback invoked after any task create/update/delete. */
 	setOnChange(callback: () => void): void {
-		this.onChangeCallback = callback;
+		this.onChangeCallbacks.add(callback);
+	}
+
+	/** Register a change listener. Returns an unsubscribe function. */
+	onChange(callback: () => void): () => void {
+		this.onChangeCallbacks.add(callback);
+		return () => { this.onChangeCallbacks.delete(callback); };
 	}
 
 	private notifyChange(): void {
-		this.onChangeCallback?.();
+		for (const fn of this.onChangeCallbacks) fn();
 	}
 
 	// ── ID Generation ───────────────────────────────────────────────

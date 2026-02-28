@@ -347,3 +347,10 @@
 	border-color: rgba(30, 102, 245, 0.3);
 }
 .theme-light .mlw-editor-popover { box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15); }
+
+/* ── Codeblock Embeds ────────────────────────────────── */
+.mlw-embed { padding: 4px 0; }
+.mlw-embed__empty { padding: 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+.mlw-embed__list { display: flex; flex-direction: column; }
+.mlw-embed .mlw-view-item { padding: 6px 12px; }
+.mlw-embed .mlw-view-item:last-child { border-bottom: none; }
