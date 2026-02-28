@@ -70,9 +70,17 @@ export abstract class BaseTaskView extends ItemView {
 		group.createSpan({ text: name, cls: "mlw-view-group__name" });
 	}
 
-	/** Render a clickable task row. metaItems are small text badges. */
+	/** Render a clickable task row with optional complete checkbox. */
 	protected renderTaskRow(task: Task, text: string, metaItems?: string[]): void {
 		const item = this.listEl.createDiv("mlw-view-item");
+
+		// Complete checkbox (circle that checks off the task)
+		const check = item.createDiv("mlw-view-item__check");
+		check.addEventListener("click", (e) => {
+			e.stopPropagation();
+			void this.completeTaskFromView(task);
+		});
+
 		item.createDiv({ text, cls: "mlw-view-item__text" });
 
 		if (metaItems !== undefined && metaItems.length > 0) {
@@ -83,6 +91,19 @@ export abstract class BaseTaskView extends ItemView {
 		}
 
 		item.addEventListener("click", () => void this.navigateToTask(task));
+	}
+
+	/** Complete a task from the view: update DataStore + check the source file checkbox. */
+	protected async completeTaskFromView(task: Task): Promise<void> {
+		this.store.completeTask(task.id);
+		const file = this.app.vault.getAbstractFileByPath(task.source_file);
+		if (!(file instanceof TFile)) return;
+		const content = await this.app.vault.read(file);
+		const lines = content.split("\n");
+		const line = lines[task.source_line - 1];
+		if (line === undefined) return;
+		lines[task.source_line - 1] = line.replace(/^(\s*[-*]\s+)\[ \]/, "$1[x]");
+		await this.app.vault.modify(file, lines.join("\n"));
 	}
 
 	// ── Shared utilities ──────────────────────────────────────────

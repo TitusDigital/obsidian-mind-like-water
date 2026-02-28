@@ -246,8 +246,16 @@
 
 /* ── Task Views (shared) ─────────────────────────────── */
 .mlw-view { padding: 0; }
-.mlw-view-header { padding: 12px 16px 8px; border-bottom: 1px solid var(--background-modifier-border); }
-.mlw-view-header h4 { margin: 0; font-size: 14px; font-weight: 600; color: var(--text-normal); }
+.mlw-view-header { display: flex; align-items: center; gap: 8px; padding: 12px 16px 8px; border-bottom: 1px solid var(--background-modifier-border); }
+.mlw-view-header h4 { flex: 1; margin: 0; font-size: 14px; font-weight: 600; color: var(--text-normal); }
+.mlw-view-header__toggle {
+	font-size: 11px; padding: 2px 8px; border-radius: 4px; cursor: pointer;
+	background: transparent; border: 1px solid var(--background-modifier-border);
+	color: var(--text-muted); transition: all 0.15s ease;
+}
+.mlw-view-header__toggle:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.mlw-view-header__toggle--active { background: var(--interactive-accent); color: var(--text-on-accent); border-color: var(--interactive-accent); }
+.mlw-view-header__toggle--active:hover { filter: brightness(1.1); }
 .mlw-view-list { overflow-y: auto; }
 .mlw-view-empty { padding: 32px 16px; text-align: center; color: var(--text-muted); }
 .mlw-view-empty__hint { font-size: 12px; color: var(--text-faint); margin-top: 4px; }
@@ -263,6 +271,11 @@
 .mlw-view-item:hover { background: var(--background-modifier-hover); }
 .mlw-view-item__text { flex: 1; font-size: 13px; color: var(--text-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mlw-view-item__meta { display: flex; gap: 8px; font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+.mlw-view-item__check {
+	width: 16px; height: 16px; border: 1.5px solid var(--text-faint); border-radius: 50%;
+	flex-shrink: 0; cursor: pointer; transition: all 0.15s ease;
+}
+.mlw-view-item__check:hover { border-color: var(--interactive-accent); background: rgba(var(--interactive-accent-rgb), 0.15); }
 .mlw-view-item__badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--background-secondary-alt); color: var(--text-faint); }
 .mlw-view-item--completed { opacity: 0.6; }
 .mlw-view-item--completed .mlw-view-item__text { text-decoration: line-through; }

@@ -5,6 +5,8 @@ import { VIEW_TYPE_MLW_NEXT_ACTIONS, NEXT_ACTIONS_ICON } from "views/ViewConstan
 import { BaseTaskView, type ViewConfig } from "views/BaseTaskView";
 
 export class NextActionsView extends BaseTaskView {
+	private showCompleted = false;
+
 	constructor(leaf: WorkspaceLeaf, store: DataStore) {
 		super(leaf, store);
 	}
@@ -21,11 +23,27 @@ export class NextActionsView extends BaseTaskView {
 		};
 	}
 
+	async onOpen(): Promise<void> {
+		await super.onOpen();
+		// Add toggle button to the header
+		const header = this.contentEl.querySelector(".mlw-view-header");
+		if (header !== null) {
+			const toggle = header.createEl("button", { cls: "mlw-view-header__toggle", attr: { "aria-label": "Show completed" } });
+			toggle.textContent = this.showCompleted ? "Hide completed" : "Show completed";
+			toggle.addEventListener("click", () => {
+				this.showCompleted = !this.showCompleted;
+				toggle.textContent = this.showCompleted ? "Hide completed" : "Show completed";
+				toggle.toggleClass("mlw-view-header__toggle--active", this.showCompleted);
+				void this.renderContent();
+			});
+		}
+	}
+
 	async renderContent(): Promise<void> {
 		this.listEl.empty();
 		const tasks = this.store.getTasksByStatus(TaskStatus.NextAction);
 
-		if (tasks.length === 0) {
+		if (tasks.length === 0 && !this.showCompleted) {
 			this.renderEmpty();
 			return;
 		}
@@ -41,6 +59,32 @@ export class NextActionsView extends BaseTaskView {
 				if (task.starred) meta.push("\u2B50");
 				this.renderTaskRow(task, text, meta);
 			}
+		}
+
+		if (this.showCompleted) {
+			await this.renderRecentlyCompleted();
+		}
+	}
+
+	private async renderRecentlyCompleted(): Promise<void> {
+		const days = this.store.getSettings().completedVisibilityDays;
+		const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+		const completed = this.store.getTasksByStatus(TaskStatus.Completed)
+			.filter(t => t.completed_date !== null && t.completed_date >= cutoff)
+			.sort((a, b) => (b.completed_date ?? "").localeCompare(a.completed_date ?? ""));
+
+		if (completed.length === 0) return;
+
+		this.renderGroupHeader("Recently Completed");
+		for (const task of completed) {
+			const text = await this.readTaskText(task);
+			const item = this.listEl.createDiv("mlw-view-item mlw-view-item--completed");
+			item.createDiv({ text, cls: "mlw-view-item__text" });
+			if (task.completed_date !== null) {
+				const metaEl = item.createDiv("mlw-view-item__meta");
+				metaEl.createSpan({ text: this.formatDate(task.completed_date), cls: "mlw-view-item__badge" });
+			}
+			item.addEventListener("click", () => void this.navigateToTask(task));
 		}
 	}
 

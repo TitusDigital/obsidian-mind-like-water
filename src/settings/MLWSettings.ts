@@ -225,6 +225,19 @@ export class MLWSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName("Completed task visibility (days)")
+			.setDesc("How many days to show completed items in the Next Actions view.")
+			.addText(text => text
+				.setValue(String(this.plugin.store.getSettings().completedVisibilityDays))
+				.onChange(value => {
+					const parsed = parseInt(value, 10);
+					if (!isNaN(parsed) && parsed > 0) {
+						this.plugin.store.updateSettings({ completedVisibilityDays: parsed });
+					}
+				})
+			);
+
+		new Setting(containerEl)
 			.setName("Review reminder (days)")
 			.setDesc("Days between periodic review reminders.")
 			.addText(text => text

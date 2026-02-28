@@ -67,6 +67,7 @@ export interface MLWSettings {
 	autoTransitionScheduled: boolean;
 	reviewReminderDays: number;
 	orphanGracePeriodDays: number;
+	completedVisibilityDays: number;
 	dataStoreBackup: boolean;
 	lastReviewDate: string | null;
 }
@@ -102,6 +103,7 @@ export const DEFAULT_SETTINGS: MLWSettings = {
 	autoTransitionScheduled: true,
 	reviewReminderDays: 7,
 	orphanGracePeriodDays: 7,
+	completedVisibilityDays: 1,
 	dataStoreBackup: true,
 	lastReviewDate: null,
 };
