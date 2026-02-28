@@ -1,0 +1,221 @@
+import { type Plugin, normalizePath, type TFile } from "obsidian";
+import {
+	type MLWData,
+	type MLWSettings,
+	type Task,
+	TaskStatus,
+	DEFAULT_DATA,
+	DEFAULT_SETTINGS,
+} from "data/models";
+
+const ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
+const ID_LENGTH = 6;
+const SAVE_DEBOUNCE_MS = 500;
+
+export class DataStore {
+	private plugin: Plugin;
+	private data: MLWData;
+	private saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	constructor(plugin: Plugin) {
+		this.plugin = plugin;
+		this.data = structuredClone(DEFAULT_DATA);
+	}
+
+	// ── Initialization ──────────────────────────────────────────────
+
+	/** Load data.json, merge with defaults, optionally create backup. */
+	async load(): Promise<void> {
+		const raw: unknown = await this.plugin.loadData();
+		if (raw !== null && raw !== undefined && typeof raw === "object") {
+			const loaded = raw as Partial<MLWData>;
+			this.data = {
+				tasks: (loaded.tasks as Record<string, Task> | undefined) ?? {},
+				settings: { ...DEFAULT_SETTINGS, ...(loaded.settings ?? {}) },
+			};
+		} else {
+			this.data = structuredClone(DEFAULT_DATA);
+		}
+
+		if (this.data.settings.dataStoreBackup) {
+			await this.createBackup();
+		}
+	}
+
+	/** Write data.json.bak in the plugin directory. */
+	private async createBackup(): Promise<void> {
+		const adapter = this.plugin.app.vault.adapter;
+		const pluginDir = normalizePath(
+			`${this.plugin.app.vault.configDir}/plugins/${this.plugin.manifest.id}`
+		);
+		const backupPath = normalizePath(`${pluginDir}/data.json.bak`);
+		await adapter.write(backupPath, JSON.stringify(this.data, null, 2));
+	}
+
+	// ── Persistence ─────────────────────────────────────────────────
+
+	/** Schedule a debounced save. Multiple rapid calls coalesce into one write. */
+	private scheduleSave(): void {
+		if (this.saveTimeout !== null) {
+			clearTimeout(this.saveTimeout);
+		}
+		this.saveTimeout = setTimeout(() => {
+			this.saveTimeout = null;
+			void this.plugin.saveData(this.data);
+		}, SAVE_DEBOUNCE_MS);
+	}
+
+	/** Force an immediate save (used during plugin unload). */
+	async saveImmediate(): Promise<void> {
+		if (this.saveTimeout !== null) {
+			clearTimeout(this.saveTimeout);
+			this.saveTimeout = null;
+		}
+		await this.plugin.saveData(this.data);
+	}
+
+	// ── ID Generation ───────────────────────────────────────────────
+
+	/** Generate a unique 6-char alphanumeric ID. */
+	generateId(): string {
+		let id: string;
+		do {
+			id = "";
+			for (let i = 0; i < ID_LENGTH; i++) {
+				id += ID_CHARS.charAt(Math.floor(Math.random() * ID_CHARS.length));
+			}
+		} while (id in this.data.tasks);
+		return id;
+	}
+
+	// ── Task CRUD ───────────────────────────────────────────────────
+
+	/** Create a new task. Returns the created task. */
+	createTask(fields: Partial<Omit<Task, "id" | "created" | "modified">> & {
+		source_file: string;
+		source_line: number;
+	}): Task {
+		const now = new Date().toISOString();
+		const task: Task = {
+			id: this.generateId(),
+			status: fields.status ?? TaskStatus.Inbox,
+			area_of_focus: fields.area_of_focus ?? "",
+			project: fields.project ?? null,
+			starred: fields.starred ?? false,
+			due_date: fields.due_date ?? null,
+			start_date: fields.start_date ?? null,
+			completed_date: fields.completed_date ?? null,
+			energy: fields.energy ?? null,
+			context: fields.context ?? null,
+			sort_order: fields.sort_order ?? this.getNextSortOrder(),
+			source_file: fields.source_file,
+			source_line: fields.source_line,
+			created: now,
+			modified: now,
+			recurrence_rule: fields.recurrence_rule ?? null,
+			parent_task_id: fields.parent_task_id ?? null,
+		};
+		this.data.tasks[task.id] = task;
+		this.scheduleSave();
+		return task;
+	}
+
+	/** Get a task by ID. */
+	getTask(id: string): Task | undefined {
+		return this.data.tasks[id];
+	}
+
+	/** Get all tasks as an array. */
+	getAllTasks(): Task[] {
+		return Object.values(this.data.tasks);
+	}
+
+	/** Update specific fields on an existing task. Returns updated task or undefined. */
+	updateTask(id: string, fields: Partial<Omit<Task, "id" | "created">>): Task | undefined {
+		const task = this.data.tasks[id];
+		if (task === undefined) return undefined;
+		Object.assign(task, fields, { modified: new Date().toISOString() });
+		this.scheduleSave();
+		return task;
+	}
+
+	/** Delete a task by ID. Returns true if the task existed. */
+	deleteTask(id: string): boolean {
+		if (!(id in this.data.tasks)) return false;
+		// eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+		delete this.data.tasks[id];
+		this.scheduleSave();
+		return true;
+	}
+
+	// ── Settings ────────────────────────────────────────────────────
+
+	/** Get the current settings. */
+	getSettings(): MLWSettings {
+		return this.data.settings;
+	}
+
+	/** Update settings (merges with current). */
+	updateSettings(partial: Partial<MLWSettings>): void {
+		Object.assign(this.data.settings, partial);
+		this.scheduleSave();
+	}
+
+	// ── Utilities ───────────────────────────────────────────────────
+
+	/** Get the next sort_order value (max + 1, or 0 if empty). */
+	private getNextSortOrder(): number {
+		const tasks = Object.values(this.data.tasks);
+		if (tasks.length === 0) return 0;
+		return Math.max(...tasks.map(t => t.sort_order)) + 1;
+	}
+
+	/** Count tasks in a given status. */
+	getTaskCountByStatus(status: TaskStatus): number {
+		return Object.values(this.data.tasks).filter(t => t.status === status).length;
+	}
+
+	// ── Projects ────────────────────────────────────────────────────
+
+	/** Get unique project names used by tasks in a given Area of Focus. */
+	getProjectsForAOF(aof: string): string[] {
+		const projects = new Set<string>();
+		for (const task of Object.values(this.data.tasks)) {
+			if (task.area_of_focus === aof && task.project !== null) {
+				projects.add(task.project);
+			}
+		}
+		return [...projects].sort();
+	}
+
+	/** Create a new project markdown file with frontmatter. */
+	async createProjectFile(aof: string, name: string, outcome: string): Promise<void> {
+		const folder = normalizePath(this.data.settings.projectFolder);
+		const exists = await this.plugin.app.vault.adapter.exists(folder);
+		if (!exists) {
+			await this.plugin.app.vault.createFolder(folder);
+		}
+		const filePath = normalizePath(`${folder}/${name}.md`);
+		const now = new Date().toISOString();
+		const content = [
+			"---",
+			"mlw_type: project",
+			`title: "${name}"`,
+			"status: active",
+			`area_of_focus: "${aof}"`,
+			`successful_outcome: "${outcome}"`,
+			"sort_order: 0",
+			`created: ${now}`,
+			`modified: ${now}`,
+			"---",
+			"",
+			"## Successful Outcome",
+			"",
+			outcome,
+			"",
+			"## Notes",
+			"",
+		].join("\n");
+		await this.plugin.app.vault.create(filePath, content);
+	}
+}

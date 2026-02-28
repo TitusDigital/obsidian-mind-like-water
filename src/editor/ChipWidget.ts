@@ -1,0 +1,91 @@
+import { WidgetType, type EditorView } from "@codemirror/view";
+import { TaskStatus, FALLBACK_AOF_COLOR } from "data/models";
+import type { AOFColor } from "data/models";
+import type { DataStore } from "data/DataStore";
+import { MetadataEditor } from "components/MetadataEditor";
+
+/** Renders a colored metadata chip for a tracked MLW task. */
+export class ChipWidget extends WidgetType {
+	constructor(
+		readonly taskId: string,
+		private readonly store: DataStore,
+	) {
+		super();
+	}
+
+	toDOM(view: EditorView): HTMLElement {
+		const span = document.createElement("span");
+		const task = this.store.getTask(this.taskId);
+
+		if (task === undefined) {
+			span.className = "mlw-chip mlw-chip--unknown";
+			span.textContent = "? unknown";
+			return span;
+		}
+
+		// Build chip content parts
+		const parts: string[] = [];
+
+		if (task.status === TaskStatus.Inbox && task.area_of_focus === "") {
+			parts.push("\u{1F4E5} Inbox");
+		} else {
+			if (task.starred) parts.push("\u2B50");
+			if (task.area_of_focus !== "") parts.push(task.area_of_focus);
+			if (task.project !== null) parts.push(task.project);
+			if (task.due_date !== null) parts.push("\u{1F4C5} " + task.due_date);
+			if (parts.length === 0) parts.push("Tracked");
+		}
+
+		span.className = "mlw-chip";
+		span.textContent = parts.join(" \u00B7 ");
+
+		// Look up AOF color
+		const color = this.getAOFColor(task.area_of_focus);
+		span.style.backgroundColor = color.bg;
+		span.style.color = color.text;
+		span.style.borderColor = color.border;
+
+		// Mousedown → open metadata editor popover (mousedown fires before CM6 focus handling)
+		span.addEventListener("mousedown", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const current = this.store.getTask(this.taskId);
+			if (current === undefined) return;
+			const taskText = this.extractTaskText(view);
+			MetadataEditor.open(current, taskText, span.getBoundingClientRect(), this.store, view);
+		});
+
+		return span;
+	}
+
+	eq(): boolean {
+		// Always re-render — task metadata may have changed in the DataStore
+		return false;
+	}
+
+	ignoreEvent(event: Event): boolean {
+		return event.type === "mousedown" || event.type === "click";
+	}
+
+	private extractTaskText(view: EditorView): string {
+		const doc = view.state.doc;
+		const needle = "<!-- mlw:" + this.taskId + " -->";
+		for (let i = 1; i <= doc.lines; i++) {
+			const line = doc.line(i);
+			if (line.text.includes(needle)) {
+				return line.text
+					.replace(/^\s*[-*]\s+\[[ xX]\]\s+/, "")
+					.replace(/\s*<!-- mlw:[a-z0-9]{6} -->/, "")
+					.trim();
+			}
+		}
+		return "";
+	}
+
+	private getAOFColor(aofName: string): AOFColor {
+		if (aofName === "") return FALLBACK_AOF_COLOR;
+		const aofs = this.store.getSettings().areasOfFocus;
+		const match = aofs.find(a => a.name === aofName);
+		return match?.color ?? FALLBACK_AOF_COLOR;
+	}
+}

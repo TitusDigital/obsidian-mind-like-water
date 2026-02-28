@@ -1,8 +1,243 @@
-/*
+/* ── MLW Chip ─────────────────────────────────────────── */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.mlw-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	padding: 2px 10px;
+	margin-left: 8px;
+	border-radius: 4px;
+	font-size: 12px;
+	font-family: var(--font-monospace);
+	letter-spacing: 0.01em;
+	border-width: 1px;
+	border-style: solid;
+	cursor: pointer;
+	vertical-align: middle;
+	line-height: 20px;
+	white-space: nowrap;
+	transition: filter 0.15s ease;
+}
+.mlw-chip:hover { filter: brightness(1.2); }
+.mlw-chip--unknown {
+	background: rgba(150, 150, 150, 0.15);
+	color: #A0A0A0;
+	border-color: rgba(150, 150, 150, 0.3);
+}
 
-If your plugin does not need CSS, delete this file.
+/* ── Track Button ─────────────────────────────────────── */
 
-*/
+.mlw-track-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 1px 8px;
+	margin-left: 8px;
+	border-radius: 4px;
+	font-size: 11px;
+	font-family: var(--font-monospace);
+	background: rgba(108, 112, 134, 0.1);
+	color: #585B70;
+	border: 1px dashed rgba(108, 112, 134, 0.25);
+	cursor: pointer;
+	vertical-align: middle;
+	line-height: 20px;
+	white-space: nowrap;
+	transition: all 0.15s ease;
+}
+.mlw-track-btn:hover {
+	background: rgba(137, 180, 250, 0.2);
+	color: #89B4FA;
+	border-color: rgba(137, 180, 250, 0.4);
+}
+
+/* ── Metadata Editor Popover ──────────────────────────── */
+
+.mlw-popover-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 1000;
+}
+.mlw-editor-popover {
+	position: fixed;
+	z-index: 1001;
+	width: 320px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+	font-family: var(--font-interface);
+	overflow: hidden;
+}
+
+/* Header */
+.mlw-editor-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 10px 14px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+.mlw-editor-header__dot {
+	width: 8px; height: 8px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+.mlw-editor-header__title {
+	flex: 1;
+	font-size: 13px; font-weight: 600;
+	color: var(--text-normal);
+}
+.mlw-editor-header__close,
+.mlw-project-creator__close {
+	cursor: pointer;
+	font-size: 16px;
+	color: var(--text-muted);
+	line-height: 1;
+	padding: 2px 4px;
+	border-radius: 4px;
+}
+.mlw-editor-header__close:hover,
+.mlw-project-creator__close:hover {
+	color: var(--text-normal);
+	background: var(--background-modifier-hover);
+}
+.mlw-project-creator__close { font-size: 14px; margin-left: auto; }
+
+/* Preview */
+.mlw-editor-preview {
+	padding: 6px 14px;
+	border-bottom: 1px solid var(--background-modifier-border);
+}
+.mlw-editor-preview__input {
+	width: 100%;
+	padding: 4px 0;
+	font-size: 13px;
+	color: var(--text-normal);
+	background: transparent;
+	border: none;
+	outline: none;
+	font-family: var(--font-interface);
+	box-sizing: border-box;
+}
+.mlw-editor-preview__input::placeholder { color: var(--text-faint); }
+
+/* Fields layout */
+.mlw-editor-fields { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
+.mlw-editor-fields__row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mlw-editor-fields__group { display: flex; flex-direction: column; gap: 4px; }
+.mlw-editor-fields__label-row { display: flex; align-items: center; justify-content: space-between; }
+
+/* Labels */
+.mlw-editor-label {
+	font-size: 11px;
+	font-family: var(--font-monospace);
+	color: var(--text-faint);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+/* Inputs & selects */
+.mlw-editor-select,
+.mlw-editor-input {
+	width: 100%;
+	padding: 5px 8px;
+	font-size: 13px;
+	font-family: var(--font-interface);
+	color: var(--text-normal);
+	background: var(--background-secondary-alt);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 4px;
+	outline: none;
+	box-sizing: border-box;
+}
+.mlw-editor-select:focus,
+.mlw-editor-input:focus { border-color: var(--interactive-accent); }
+.mlw-editor-select { cursor: pointer; }
+
+/* Star toggle */
+.mlw-editor-star {
+	width: 100%;
+	padding: 6px 10px;
+	font-size: 13px;
+	cursor: pointer;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary-alt);
+	color: var(--text-muted);
+	text-align: left;
+	transition: all 0.15s ease;
+}
+.mlw-editor-star:hover { background: var(--background-modifier-hover); }
+.mlw-editor-star--active {
+	color: var(--text-normal);
+	border-color: rgba(235, 160, 72, 0.4);
+	background: rgba(235, 160, 72, 0.1);
+}
+
+/* Footer */
+.mlw-editor-footer {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 14px;
+	border-top: 1px solid var(--background-modifier-border);
+}
+.mlw-editor-footer__id {
+	font-size: 11px;
+	font-family: var(--font-monospace);
+	color: var(--text-faint);
+}
+.mlw-editor-footer__hints { flex: 1; font-size: 10px; color: var(--text-faint); text-align: center; }
+.mlw-editor-footer__done,
+.mlw-project-creator__btn {
+	padding: 3px 12px;
+	font-size: 12px;
+	cursor: pointer;
+	border-radius: 4px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+.mlw-editor-footer__done:hover,
+.mlw-project-creator__btn:hover { filter: brightness(1.1); }
+.mlw-project-creator__btn { width: 100%; padding: 5px 10px; }
+.mlw-project-creator__btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Project add button */
+.mlw-project-add-btn {
+	cursor: pointer;
+	font-size: 14px; font-weight: 600;
+	color: var(--text-muted);
+	line-height: 1;
+	padding: 0 4px;
+	border-radius: 4px;
+}
+.mlw-project-add-btn:hover {
+	color: var(--interactive-accent);
+	background: var(--background-modifier-hover);
+}
+
+/* Project creator */
+.mlw-project-creator { display: flex; flex-direction: column; gap: 6px; }
+.mlw-project-creator__header { display: flex; align-items: center; gap: 6px; }
+.mlw-project-creator__aof-badge {
+	font-size: 10px;
+	padding: 1px 6px;
+	border-radius: 3px;
+	border: 1px solid;
+}
+
+/* ── Light theme overrides ────────────────────────────── */
+
+.theme-light .mlw-track-btn {
+	background: rgba(108, 112, 134, 0.08);
+	color: #6C7086;
+	border-color: rgba(108, 112, 134, 0.2);
+}
+.theme-light .mlw-track-btn:hover {
+	background: rgba(30, 102, 245, 0.12);
+	color: #1E66F5;
+	border-color: rgba(30, 102, 245, 0.3);
+}
+.theme-light .mlw-editor-popover { box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15); }
