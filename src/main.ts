@@ -105,6 +105,18 @@ export default class MindLikeWaterPlugin extends Plugin {
 		// ── Reactive Updates ──────────────────────────────────
 		this.store.setOnChange(() => this.onTasksChanged());
 
+		// Refresh views when any markdown file changes (catches text renames)
+		let fileChangeTimer: ReturnType<typeof setTimeout> | null = null;
+		this.registerEvent(
+			this.app.vault.on("modify", () => {
+				if (fileChangeTimer !== null) clearTimeout(fileChangeTimer);
+				fileChangeTimer = setTimeout(() => {
+					fileChangeTimer = null;
+					this.refreshAllViews();
+				}, 200);
+			}),
+		);
+
 		await this.ensureProjectFolder();
 	}
 
@@ -140,10 +152,15 @@ export default class MindLikeWaterPlugin extends Plugin {
 			this.ribbonBadgeEl.style.display = "none";
 		}
 
+		this.refreshAllViews();
+	}
+
+	private refreshAllViews(): void {
 		for (const vt of ALL_VIEW_TYPES) {
 			for (const leaf of this.app.workspace.getLeavesOfType(vt)) {
-				if (leaf.view instanceof BaseTaskView) {
-					leaf.view.refresh();
+				const view = leaf.view as BaseTaskView;
+				if (typeof view.refresh === "function") {
+					view.refresh();
 				}
 			}
 		}
