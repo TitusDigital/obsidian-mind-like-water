@@ -12,11 +12,14 @@ import { NextActionsView } from "views/NextActionsView";
 import { ScheduledView } from "views/ScheduledView";
 import { SomedayView } from "views/SomedayView";
 import { CompletedView } from "views/CompletedView";
+import { FocusListView } from "views/FocusListView";
 import {
 	VIEW_TYPE_MLW_NEXT_ACTIONS,
 	VIEW_TYPE_MLW_SCHEDULED,
 	VIEW_TYPE_MLW_SOMEDAY,
 	VIEW_TYPE_MLW_COMPLETED,
+	VIEW_TYPE_MLW_FOCUS,
+	FOCUS_ICON,
 } from "views/ViewConstants";
 import { BaseTaskView } from "views/BaseTaskView";
 import { StatusBarWidget } from "widgets/StatusBarWidget";
@@ -29,6 +32,7 @@ const ALL_VIEW_TYPES = [
 	VIEW_TYPE_MLW_SCHEDULED,
 	VIEW_TYPE_MLW_SOMEDAY,
 	VIEW_TYPE_MLW_COMPLETED,
+	VIEW_TYPE_MLW_FOCUS,
 ] as const;
 
 export default class MindLikeWaterPlugin extends Plugin {
@@ -73,6 +77,7 @@ export default class MindLikeWaterPlugin extends Plugin {
 		this.addCommand({ id: "open-scheduled", name: "Open Scheduled", callback: () => void this.activateView(VIEW_TYPE_MLW_SCHEDULED) });
 		this.addCommand({ id: "open-someday", name: "Open Someday/Maybe", callback: () => void this.activateView(VIEW_TYPE_MLW_SOMEDAY) });
 		this.addCommand({ id: "open-completed", name: "Open Completed", callback: () => void this.activateView(VIEW_TYPE_MLW_COMPLETED) });
+		this.addCommand({ id: "open-focus-list", name: "Open Focus List", callback: () => void this.activateView(VIEW_TYPE_MLW_FOCUS) });
 
 		// ── Views ─────────────────────────────────────────────
 		this.registerView(VIEW_TYPE_MLW_INBOX, (leaf) => new InboxView(leaf, this.store));
@@ -80,6 +85,7 @@ export default class MindLikeWaterPlugin extends Plugin {
 		this.registerView(VIEW_TYPE_MLW_SCHEDULED, (leaf) => new ScheduledView(leaf, this.store));
 		this.registerView(VIEW_TYPE_MLW_SOMEDAY, (leaf) => new SomedayView(leaf, this.store));
 		this.registerView(VIEW_TYPE_MLW_COMPLETED, (leaf) => new CompletedView(leaf, this.store));
+		this.registerView(VIEW_TYPE_MLW_FOCUS, (leaf) => new FocusListView(leaf, this.store));
 
 		// ── Ribbon Icon + Badge ───────────────────────────────
 		const ribbonEl = this.addRibbonIcon(INBOX_ICON, "Open Inbox", () => {
@@ -87,6 +93,10 @@ export default class MindLikeWaterPlugin extends Plugin {
 		});
 		ribbonEl.addClass("mlw-ribbon-inbox");
 		this.ribbonBadgeEl = ribbonEl.createSpan("mlw-ribbon-badge");
+
+		this.addRibbonIcon(FOCUS_ICON, "Open Focus List", () => {
+			void this.activateView(VIEW_TYPE_MLW_FOCUS);
+		});
 
 		// ── Status Bar (desktop only) ─────────────────────────
 		if (Platform.isDesktop) {

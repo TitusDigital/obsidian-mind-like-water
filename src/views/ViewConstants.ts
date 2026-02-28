@@ -11,3 +11,6 @@ export const SOMEDAY_ICON = "cloud";
 
 export const VIEW_TYPE_MLW_COMPLETED = "mlw-completed";
 export const COMPLETED_ICON = "check-circle";
+
+export const VIEW_TYPE_MLW_FOCUS = "mlw-focus-list";
+export const FOCUS_ICON = "star";
