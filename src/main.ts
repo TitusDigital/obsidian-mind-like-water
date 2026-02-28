@@ -40,7 +40,7 @@ export default class MindLikeWaterPlugin extends Plugin {
 		this.addCommand({
 			id: "quick-capture",
 			name: "Quick Capture",
-			hotkeys: [{ modifiers: ["Mod", "Shift"], key: "i" }],
+			hotkeys: [{ modifiers: ["Mod", "Shift"], key: "q" }],
 			callback: () => {
 				new QuickCaptureModal(this.app, this.store).open();
 			},
