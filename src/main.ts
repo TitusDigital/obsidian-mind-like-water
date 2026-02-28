@@ -4,10 +4,32 @@ import { TaskStatus } from "data/models";
 import { MLWSettingTab } from "settings/MLWSettings";
 import { mlwEditorExtension } from "editor/ChipDecoration";
 import { canTrackLine, trackTaskWithEditor } from "editor/trackTask";
+import { registerCheckboxWatcher } from "editor/CheckboxWatcher";
 import { QuickCaptureModal } from "capture/QuickCaptureModal";
 import { InboxView } from "views/InboxView";
 import { VIEW_TYPE_MLW_INBOX, INBOX_ICON } from "views/InboxViewConstants";
+import { NextActionsView } from "views/NextActionsView";
+import { ScheduledView } from "views/ScheduledView";
+import { SomedayView } from "views/SomedayView";
+import { CompletedView } from "views/CompletedView";
+import {
+	VIEW_TYPE_MLW_NEXT_ACTIONS,
+	VIEW_TYPE_MLW_SCHEDULED,
+	VIEW_TYPE_MLW_SOMEDAY,
+	VIEW_TYPE_MLW_COMPLETED,
+} from "views/ViewConstants";
+import { BaseTaskView } from "views/BaseTaskView";
 import { StatusBarWidget } from "widgets/StatusBarWidget";
+import { runScheduler } from "services/SchedulerService";
+
+/** All registered view types for cleanup and refresh. */
+const ALL_VIEW_TYPES = [
+	VIEW_TYPE_MLW_INBOX,
+	VIEW_TYPE_MLW_NEXT_ACTIONS,
+	VIEW_TYPE_MLW_SCHEDULED,
+	VIEW_TYPE_MLW_SOMEDAY,
+	VIEW_TYPE_MLW_COMPLETED,
+] as const;
 
 export default class MindLikeWaterPlugin extends Plugin {
 	store!: DataStore;
@@ -46,21 +68,22 @@ export default class MindLikeWaterPlugin extends Plugin {
 			},
 		});
 
-		this.addCommand({
-			id: "open-inbox",
-			name: "Open Inbox",
-			callback: () => void this.activateInboxView(),
-		});
+		this.addCommand({ id: "open-inbox", name: "Open Inbox", callback: () => void this.activateView(VIEW_TYPE_MLW_INBOX) });
+		this.addCommand({ id: "open-next-actions", name: "Open Next Actions", callback: () => void this.activateView(VIEW_TYPE_MLW_NEXT_ACTIONS) });
+		this.addCommand({ id: "open-scheduled", name: "Open Scheduled", callback: () => void this.activateView(VIEW_TYPE_MLW_SCHEDULED) });
+		this.addCommand({ id: "open-someday", name: "Open Someday/Maybe", callback: () => void this.activateView(VIEW_TYPE_MLW_SOMEDAY) });
+		this.addCommand({ id: "open-completed", name: "Open Completed", callback: () => void this.activateView(VIEW_TYPE_MLW_COMPLETED) });
 
-		// ── Inbox View ────────────────────────────────────────
-		this.registerView(
-			VIEW_TYPE_MLW_INBOX,
-			(leaf) => new InboxView(leaf, this.store),
-		);
+		// ── Views ─────────────────────────────────────────────
+		this.registerView(VIEW_TYPE_MLW_INBOX, (leaf) => new InboxView(leaf, this.store));
+		this.registerView(VIEW_TYPE_MLW_NEXT_ACTIONS, (leaf) => new NextActionsView(leaf, this.store));
+		this.registerView(VIEW_TYPE_MLW_SCHEDULED, (leaf) => new ScheduledView(leaf, this.store));
+		this.registerView(VIEW_TYPE_MLW_SOMEDAY, (leaf) => new SomedayView(leaf, this.store));
+		this.registerView(VIEW_TYPE_MLW_COMPLETED, (leaf) => new CompletedView(leaf, this.store));
 
 		// ── Ribbon Icon + Badge ───────────────────────────────
 		const ribbonEl = this.addRibbonIcon(INBOX_ICON, "Open Inbox", () => {
-			void this.activateInboxView();
+			void this.activateView(VIEW_TYPE_MLW_INBOX);
 		});
 		ribbonEl.addClass("mlw-ribbon-inbox");
 		this.ribbonBadgeEl = ribbonEl.createSpan("mlw-ribbon-badge");
@@ -68,6 +91,15 @@ export default class MindLikeWaterPlugin extends Plugin {
 		// ── Status Bar (desktop only) ─────────────────────────
 		if (Platform.isDesktop) {
 			this.statusBarWidget = new StatusBarWidget(this.addStatusBarItem(), this.store);
+		}
+
+		// ── Checkbox Watcher ──────────────────────────────────
+		registerCheckboxWatcher(this, this.store);
+
+		// ── Scheduler (auto-transition scheduled tasks) ───────
+		const transitioned = runScheduler(this.store);
+		if (transitioned > 0) {
+			console.log(`MLW: Transitioned ${transitioned} scheduled task(s) to Next Action`);
 		}
 
 		// ── Reactive Updates ──────────────────────────────────
@@ -78,19 +110,21 @@ export default class MindLikeWaterPlugin extends Plugin {
 
 	onunload(): void {
 		console.log("Unloading Mind Like Water plugin");
-		this.app.workspace.detachLeavesOfType(VIEW_TYPE_MLW_INBOX);
+		for (const vt of ALL_VIEW_TYPES) {
+			this.app.workspace.detachLeavesOfType(vt);
+		}
 		void this.store.saveImmediate();
 	}
 
-	private async activateInboxView(): Promise<void> {
-		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_MLW_INBOX);
+	private async activateView(viewType: string): Promise<void> {
+		const leaves = this.app.workspace.getLeavesOfType(viewType);
 		if (leaves.length > 0 && leaves[0] !== undefined) {
 			await this.app.workspace.revealLeaf(leaves[0]);
 			return;
 		}
 		const leaf = this.app.workspace.getRightLeaf(false);
 		if (leaf !== null) {
-			await leaf.setViewState({ type: VIEW_TYPE_MLW_INBOX, active: true });
+			await leaf.setViewState({ type: viewType, active: true });
 			await this.app.workspace.revealLeaf(leaf);
 		}
 	}
@@ -106,9 +140,11 @@ export default class MindLikeWaterPlugin extends Plugin {
 			this.ribbonBadgeEl.style.display = "none";
 		}
 
-		for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_MLW_INBOX)) {
-			if (leaf.view instanceof InboxView) {
-				leaf.view.refresh();
+		for (const vt of ALL_VIEW_TYPES) {
+			for (const leaf of this.app.workspace.getLeavesOfType(vt)) {
+				if (leaf.view instanceof BaseTaskView) {
+					leaf.view.refresh();
+				}
 			}
 		}
 	}
