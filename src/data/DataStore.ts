@@ -3,7 +3,9 @@ import {
 	type MLWData,
 	type MLWSettings,
 	type Task,
+	type AOFColor,
 	TaskStatus,
+	FALLBACK_AOF_COLOR,
 	DEFAULT_DATA,
 	DEFAULT_SETTINGS,
 } from "data/models";
@@ -200,6 +202,12 @@ export class DataStore {
 		return Object.values(this.data.tasks).filter(
 			t => t.starred && t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped
 		).length;
+	}
+
+	/** Get the color for an Area of Focus by name. Falls back to grey. */
+	getAOFColor(aofName: string): AOFColor {
+		const aof = this.data.settings.areasOfFocus.find(a => a.name === aofName);
+		return aof?.color ?? FALLBACK_AOF_COLOR;
 	}
 
 	// ── Projects ────────────────────────────────────────────────────
