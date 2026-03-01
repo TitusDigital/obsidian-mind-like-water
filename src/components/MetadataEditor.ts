@@ -25,7 +25,7 @@ export class MetadataEditor {
 		private readonly taskText: string,
 		private readonly anchorRect: DOMRect,
 		private readonly store: DataStore,
-		private readonly view: EditorView,
+		private readonly view: EditorView | null,
 	) {
 		this.build();
 		this.mount();
@@ -33,7 +33,7 @@ export class MetadataEditor {
 
 	static open(
 		task: Task, taskText: string, anchorRect: DOMRect,
-		store: DataStore, view: EditorView,
+		store: DataStore, view: EditorView | null = null,
 	): void {
 		if (activeEditor !== null) activeEditor.close();
 		activeEditor = new MetadataEditor(task, taskText, anchorRect, store, view);
@@ -55,7 +55,7 @@ export class MetadataEditor {
 		else this.popover.style.bottom = (window.innerHeight - this.anchorRect.top + 6) + "px";
 		this.popover.style.left = Math.max(8, Math.min(this.anchorRect.left, window.innerWidth - 340)) + "px";
 		this.scrollHandler = () => this.close();
-		this.view.scrollDOM.addEventListener("scroll", this.scrollHandler, { once: true });
+		this.view?.scrollDOM.addEventListener("scroll", this.scrollHandler, { once: true });
 		const first = this.popover.querySelector("select");
 		if (first !== null) requestAnimationFrame(() => first.focus());
 	}
@@ -64,11 +64,11 @@ export class MetadataEditor {
 		// Auto-promote: if task is still in Inbox but has an AOF, move to Next Action
 		if (this.task.status === TaskStatus.Inbox && this.task.area_of_focus !== "") {
 			this.store.updateTask(this.task.id, { status: TaskStatus.NextAction });
-			this.view.dispatch({});
+			this.view?.dispatch({});
 		}
 
 		if (this.scrollHandler !== null) {
-			this.view.scrollDOM.removeEventListener("scroll", this.scrollHandler);
+			this.view?.scrollDOM.removeEventListener("scroll", this.scrollHandler);
 			this.scrollHandler = null;
 		}
 		this.backdrop.remove();
@@ -99,12 +99,12 @@ export class MetadataEditor {
 	}
 
 	private updateTaskText(newText: string): void {
+		if (this.view === null) return;
 		const doc = this.view.state.doc;
 		const needle = "<!-- mlw:" + this.task.id + " -->";
 		for (let i = 1; i <= doc.lines; i++) {
 			const line = doc.line(i);
 			if (!line.text.includes(needle)) continue;
-			// Region between checkbox prefix and MLW comment is the task text
 			const prefixMatch = /^(\s*[-*]\s+\[[ xX]\]\s*)/.exec(line.text);
 			const commentIdx = line.text.indexOf(needle);
 			if (prefixMatch === null || commentIdx < 0) return;
@@ -245,7 +245,7 @@ export class MetadataEditor {
 		this.store.updateTask(this.task.id, { [field]: value } as Partial<Task>);
 		const refreshed = this.store.getTask(this.task.id);
 		if (refreshed !== undefined) this.task = refreshed;
-		this.view.dispatch({});
+		this.view?.dispatch({});
 	}
 
 	private handleKeyDown(e: KeyboardEvent): void {

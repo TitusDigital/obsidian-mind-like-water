@@ -4,6 +4,7 @@ import type { Task } from "data/models";
 import { ViewState, type GroupMode } from "views/ViewState";
 import { getRecurrenceSummary } from "services/RecurrenceService";
 import { RecurrenceHistoryModal } from "components/RecurrenceHistory";
+import { MetadataEditor } from "components/MetadataEditor";
 
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
@@ -159,7 +160,14 @@ export abstract class BaseTaskView extends ItemView {
 			for (const m of metaItems) metaEl.createSpan({ text: m, cls: "mlw-view-item__badge" });
 		}
 
-		item.addEventListener("click", () => void this.navigateToTask(task));
+		item.addEventListener("click", (e) => {
+			if (e.ctrlKey || e.metaKey) {
+				e.preventDefault();
+				MetadataEditor.open(task, text, item.getBoundingClientRect(), this.store);
+			} else {
+				void this.navigateToTask(task);
+			}
+		});
 	}
 
 	/** Complete a task from the view: update DataStore + check the source file checkbox. */
@@ -270,30 +278,15 @@ export abstract class BaseTaskView extends ItemView {
 	/** Navigate the editor to the task's source file and line. */
 	protected async navigateToTask(task: Task): Promise<void> {
 		const file = this.app.vault.getAbstractFileByPath(task.source_file);
-		if (!(file instanceof TFile)) {
-			new Notice("Source file no longer exists for this task.");
-			return;
-		}
-
+		if (!(file instanceof TFile)) { new Notice("Source file no longer exists for this task."); return; }
 		const content = await this.app.vault.cachedRead(file);
 		const idx = this.findTaskLine(content.split("\n"), task);
-
 		const leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf("tab");
 		await leaf.openFile(file, { eState: { line: idx } });
 		this.app.workspace.setActiveLeaf(leaf, { focus: true });
 	}
 
-	protected fallbackText(task: Task): string {
-		return task.cached_text ?? `Task in ${this.shortenPath(task.source_file)}`;
-	}
-
-	protected shortenPath(path: string): string {
-		const parts = path.split("/");
-		return parts[parts.length - 1]?.replace(".md", "") ?? path;
-	}
-
-	protected formatDate(iso: string): string {
-		const d = new Date(iso);
-		return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-	}
+	protected fallbackText(task: Task): string { return task.cached_text ?? `Task in ${this.shortenPath(task.source_file)}`; }
+	protected shortenPath(path: string): string { return path.split("/").pop()?.replace(".md", "") ?? path; }
+	protected formatDate(iso: string): string { return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }); }
 }
