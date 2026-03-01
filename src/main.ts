@@ -6,35 +6,11 @@ import { mlwEditorExtension } from "editor/ChipDecoration";
 import { canTrackLine, trackTaskWithEditor } from "editor/trackTask";
 import { registerCheckboxWatcher } from "editor/CheckboxWatcher";
 import { QuickCaptureModal } from "capture/QuickCaptureModal";
-import { InboxView } from "views/InboxView";
-import { VIEW_TYPE_MLW_INBOX, INBOX_ICON } from "views/InboxViewConstants";
-import { NextActionsView } from "views/NextActionsView";
-import { ScheduledView } from "views/ScheduledView";
-import { SomedayView } from "views/SomedayView";
-import { CompletedView } from "views/CompletedView";
-import { FocusListView } from "views/FocusListView";
-import {
-	VIEW_TYPE_MLW_NEXT_ACTIONS,
-	VIEW_TYPE_MLW_SCHEDULED,
-	VIEW_TYPE_MLW_SOMEDAY,
-	VIEW_TYPE_MLW_COMPLETED,
-	VIEW_TYPE_MLW_FOCUS,
-	FOCUS_ICON,
-} from "views/ViewConstants";
-import { BaseTaskView } from "views/BaseTaskView";
+import { UnifiedTaskView } from "views/UnifiedTaskView";
+import { VIEW_TYPE_MLW_UNIFIED, UNIFIED_ICON } from "views/ViewConstants";
 import { StatusBarWidget } from "widgets/StatusBarWidget";
 import { runScheduler } from "services/SchedulerService";
 import { registerFocusBlock, registerCompletedBlock } from "codeblocks/registerCodeblocks";
-
-/** All registered view types for cleanup and refresh. */
-const ALL_VIEW_TYPES = [
-	VIEW_TYPE_MLW_INBOX,
-	VIEW_TYPE_MLW_NEXT_ACTIONS,
-	VIEW_TYPE_MLW_SCHEDULED,
-	VIEW_TYPE_MLW_SOMEDAY,
-	VIEW_TYPE_MLW_COMPLETED,
-	VIEW_TYPE_MLW_FOCUS,
-] as const;
 
 export default class MindLikeWaterPlugin extends Plugin {
 	store!: DataStore;
@@ -73,31 +49,22 @@ export default class MindLikeWaterPlugin extends Plugin {
 			},
 		});
 
-		this.addCommand({ id: "open-inbox", name: "Open Inbox", callback: () => void this.activateView(VIEW_TYPE_MLW_INBOX) });
-		this.addCommand({ id: "open-next-actions", name: "Open Next Actions", callback: () => void this.activateView(VIEW_TYPE_MLW_NEXT_ACTIONS) });
-		this.addCommand({ id: "open-scheduled", name: "Open Scheduled", callback: () => void this.activateView(VIEW_TYPE_MLW_SCHEDULED) });
-		this.addCommand({ id: "open-someday", name: "Open Someday/Maybe", callback: () => void this.activateView(VIEW_TYPE_MLW_SOMEDAY) });
-		this.addCommand({ id: "open-completed", name: "Open Completed", callback: () => void this.activateView(VIEW_TYPE_MLW_COMPLETED) });
-		this.addCommand({ id: "open-focus-list", name: "Open Focus List", callback: () => void this.activateView(VIEW_TYPE_MLW_FOCUS) });
+		this.addCommand({ id: "open-focus-list", name: "Open Focus List", callback: () => void this.openTab("focus") });
+		this.addCommand({ id: "open-inbox", name: "Open Inbox", callback: () => void this.openTab("inbox") });
+		this.addCommand({ id: "open-next-actions", name: "Open Next Actions", callback: () => void this.openTab("next") });
+		this.addCommand({ id: "open-scheduled", name: "Open Scheduled", callback: () => void this.openTab("scheduled") });
+		this.addCommand({ id: "open-someday", name: "Open Someday/Maybe", callback: () => void this.openTab("someday") });
+		this.addCommand({ id: "open-completed", name: "Open Completed", callback: () => void this.openTab("completed") });
 
-		// ── Views ─────────────────────────────────────────────
-		this.registerView(VIEW_TYPE_MLW_INBOX, (leaf) => new InboxView(leaf, this.store));
-		this.registerView(VIEW_TYPE_MLW_NEXT_ACTIONS, (leaf) => new NextActionsView(leaf, this.store));
-		this.registerView(VIEW_TYPE_MLW_SCHEDULED, (leaf) => new ScheduledView(leaf, this.store));
-		this.registerView(VIEW_TYPE_MLW_SOMEDAY, (leaf) => new SomedayView(leaf, this.store));
-		this.registerView(VIEW_TYPE_MLW_COMPLETED, (leaf) => new CompletedView(leaf, this.store));
-		this.registerView(VIEW_TYPE_MLW_FOCUS, (leaf) => new FocusListView(leaf, this.store));
+		// ── View ──────────────────────────────────────────────
+		this.registerView(VIEW_TYPE_MLW_UNIFIED, (leaf) => new UnifiedTaskView(leaf, this.store));
 
 		// ── Ribbon Icon + Badge ───────────────────────────────
-		const ribbonEl = this.addRibbonIcon(INBOX_ICON, "Open Inbox", () => {
-			void this.activateView(VIEW_TYPE_MLW_INBOX);
+		const ribbonEl = this.addRibbonIcon(UNIFIED_ICON, "Open Mind Like Water", () => {
+			void this.openTab("focus");
 		});
 		ribbonEl.addClass("mlw-ribbon-inbox");
 		this.ribbonBadgeEl = ribbonEl.createSpan("mlw-ribbon-badge");
-
-		this.addRibbonIcon(FOCUS_ICON, "Open Focus List", () => {
-			void this.activateView(VIEW_TYPE_MLW_FOCUS);
-		});
 
 		// ── Status Bar (desktop only) ─────────────────────────
 		if (Platform.isDesktop) {
@@ -137,22 +104,22 @@ export default class MindLikeWaterPlugin extends Plugin {
 
 	onunload(): void {
 		console.log("Unloading Mind Like Water plugin");
-		for (const vt of ALL_VIEW_TYPES) {
-			this.app.workspace.detachLeavesOfType(vt);
-		}
+		this.app.workspace.detachLeavesOfType(VIEW_TYPE_MLW_UNIFIED);
 		void this.store.saveImmediate();
 	}
 
-	private async activateView(viewType: string): Promise<void> {
-		const leaves = this.app.workspace.getLeavesOfType(viewType);
+	private async openTab(tabId: string): Promise<void> {
+		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_MLW_UNIFIED);
 		if (leaves.length > 0 && leaves[0] !== undefined) {
 			await this.app.workspace.revealLeaf(leaves[0]);
+			(leaves[0].view as UnifiedTaskView).switchTab(tabId);
 			return;
 		}
 		const leaf = this.app.workspace.getRightLeaf(false);
 		if (leaf !== null) {
-			await leaf.setViewState({ type: viewType, active: true });
+			await leaf.setViewState({ type: VIEW_TYPE_MLW_UNIFIED, active: true });
 			await this.app.workspace.revealLeaf(leaf);
+			(leaf.view as UnifiedTaskView).switchTab(tabId);
 		}
 	}
 
@@ -171,13 +138,9 @@ export default class MindLikeWaterPlugin extends Plugin {
 	}
 
 	private refreshAllViews(): void {
-		for (const vt of ALL_VIEW_TYPES) {
-			for (const leaf of this.app.workspace.getLeavesOfType(vt)) {
-				const view = leaf.view as BaseTaskView;
-				if (typeof view.refresh === "function") {
-					view.refresh();
-				}
-			}
+		for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_MLW_UNIFIED)) {
+			const view = leaf.view as UnifiedTaskView;
+			if (typeof view.refresh === "function") view.refresh();
 		}
 	}
 
