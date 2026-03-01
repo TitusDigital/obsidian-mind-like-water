@@ -21,6 +21,26 @@ export enum CaptureLocation {
 	InboxFile = "inbox_file",
 }
 
+/** Project lifecycle statuses (stored in YAML frontmatter) */
+export enum ProjectStatus {
+	Active = "active",
+	Completed = "completed",
+	OnHold = "on_hold",
+	Dropped = "dropped",
+}
+
+/** Parsed project metadata from a markdown file */
+export interface ProjectMeta {
+	filePath: string;
+	title: string;
+	status: ProjectStatus;
+	area_of_focus: string;
+	successful_outcome: string;
+	sort_order: number;
+	created: string;
+	modified: string;
+}
+
 /** Color scheme for an Area of Focus chip */
 export interface AOFColor {
 	bg: string;
