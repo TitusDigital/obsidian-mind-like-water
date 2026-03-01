@@ -2,6 +2,8 @@ import { ItemView, type WorkspaceLeaf, TFile, Notice } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import type { Task } from "data/models";
 import { ViewState, type GroupMode } from "views/ViewState";
+import { getRecurrenceSummary } from "services/RecurrenceService";
+import { RecurrenceHistoryModal } from "components/RecurrenceHistory";
 
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
@@ -143,6 +145,14 @@ export abstract class BaseTaskView extends ItemView {
 		check.addEventListener("click", (e) => { e.stopPropagation(); void this.completeTaskFromView(task); });
 
 		item.createDiv({ text, cls: "mlw-view-item__text" });
+
+		// Recurrence indicator (click opens history)
+		if (task.recurrence_rule !== null) {
+			const recurCls = task.recurrence_suspended ? "mlw-view-item__recur mlw-view-item__recur--paused" : "mlw-view-item__recur";
+			const recurEl = item.createSpan({ text: "\u21BB", cls: recurCls });
+			recurEl.title = getRecurrenceSummary(task.recurrence_rule, task.recurrence_type) + (task.recurrence_suspended ? " (paused)" : "");
+			recurEl.addEventListener("click", (e) => { e.stopPropagation(); new RecurrenceHistoryModal(this.app, this.store, task).open(); });
+		}
 
 		if (metaItems !== undefined && metaItems.length > 0) {
 			const metaEl = item.createDiv("mlw-view-item__meta");

@@ -563,6 +563,23 @@
 .mlw-recurrence-pause-btn--active { color: var(--text-accent); }
 .mlw-recurrence-summary { font-size: 11px; color: var(--text-muted); margin-top: 4px; font-style: italic; }
 .mlw-pause-indicator { color: var(--text-warning, #e2a832); font-size: 12px; }
+.mlw-view-item__recur { font-size: 13px; color: var(--text-muted); margin-left: 4px; flex-shrink: 0; }
+.mlw-view-item__recur--paused { opacity: 0.4; text-decoration: line-through; }
+
+/* ── Recurrence History Modal ──────────────────────── */
+.mlw-recurrence-history__header { margin-bottom: 12px; }
+.mlw-recurrence-history__header h3 { margin: 0 0 4px; }
+.mlw-recurrence-history__summary { color: var(--text-muted); font-size: 13px; margin: 0; }
+.mlw-recurrence-history__count { color: var(--text-faint); font-size: 12px; margin: 2px 0 0; }
+.mlw-recurrence-history__list { display: flex; flex-direction: column; gap: 2px; }
+.mlw-recurrence-history__row { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; cursor: pointer; }
+.mlw-recurrence-history__row:hover { background: var(--background-modifier-hover); }
+.mlw-recurrence-history__row--current { background: rgba(var(--interactive-accent-rgb, 79, 140, 201), 0.08); }
+.mlw-recurrence-history__status { font-size: 14px; flex-shrink: 0; }
+.mlw-recurrence-history__text { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mlw-recurrence-history__meta { display: flex; gap: 8px; flex-shrink: 0; }
+.mlw-recurrence-history__date { font-size: 11px; color: var(--text-muted); }
+.mlw-recurrence-history__current-tag { font-size: 10px; color: var(--text-accent); font-weight: 600; }
 
 /* ── Codeblock Embeds ────────────────────────────────── */
 .mlw-embed { padding: 4px 0; }

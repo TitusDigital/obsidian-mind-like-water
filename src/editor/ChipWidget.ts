@@ -32,6 +32,7 @@ export class ChipWidget extends WidgetType {
 			if (task.area_of_focus !== "") parts.push(task.area_of_focus);
 			if (task.project !== null) parts.push(task.project);
 			if (task.due_date !== null) parts.push("\u{1F4C5} " + task.due_date);
+			if (task.recurrence_rule !== null) parts.push(task.recurrence_suspended ? "\u21BB\u23F8" : "\u21BB");
 			if (parts.length === 0) parts.push("Tracked");
 		}
 		const fullText = parts.join(" \u00B7 ");
