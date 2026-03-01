@@ -14,3 +14,6 @@ export const COMPLETED_ICON = "check-circle";
 
 export const VIEW_TYPE_MLW_FOCUS = "mlw-focus-list";
 export const FOCUS_ICON = "star";
+
+export const VIEW_TYPE_MLW_UNIFIED = "mlw-unified";
+export const UNIFIED_ICON = "droplets";

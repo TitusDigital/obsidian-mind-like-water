@@ -348,6 +348,19 @@
 }
 .theme-light .mlw-editor-popover { box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15); }
 
+/* ── Unified Tab Bar ─────────────────────────────────── */
+.mlw-tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--background-modifier-border); }
+.mlw-tab-btn {
+	flex: 1; padding: 8px 4px; font-size: 11px; text-align: center;
+	cursor: pointer; border: none; background: transparent;
+	color: var(--text-muted); border-bottom: 2px solid transparent;
+	font-family: var(--font-interface); transition: all 0.15s ease;
+}
+.mlw-tab-btn:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
+.mlw-tab-btn--active { color: var(--text-normal); border-bottom-color: var(--interactive-accent); }
+.mlw-view-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 16px; }
+.mlw-view-controls:empty { display: none; }
+
 /* ── Codeblock Embeds ────────────────────────────────── */
 .mlw-embed { padding: 4px 0; }
 .mlw-embed__empty { padding: 16px; text-align: center; color: var(--text-muted); font-size: 13px; }

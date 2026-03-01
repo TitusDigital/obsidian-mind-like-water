@@ -21,7 +21,7 @@ export interface ViewConfig {
  */
 export abstract class BaseTaskView extends ItemView {
 	protected listEl!: HTMLElement;
-	private unsubscribeViewState: (() => void) | null = null;
+	protected unsubscribeViewState: (() => void) | null = null;
 	private aofSelectEl: HTMLSelectElement | null = null;
 
 	constructor(leaf: WorkspaceLeaf, protected readonly store: DataStore) {
@@ -38,7 +38,12 @@ export abstract class BaseTaskView extends ItemView {
 		const { contentEl } = this;
 		contentEl.empty();
 		contentEl.addClass("mlw-view");
+		this.buildLayout();
+		await this.renderContent();
+	}
 
+	protected buildLayout(): void {
+		const { contentEl } = this;
 		const cfg = this.getViewConfig();
 		const header = contentEl.createDiv("mlw-view-header");
 		header.createEl("h4", { text: cfg.title });
@@ -56,7 +61,6 @@ export abstract class BaseTaskView extends ItemView {
 		}
 
 		this.listEl = contentEl.createDiv("mlw-view-list");
-		await this.renderContent();
 	}
 
 	async onClose(): Promise<void> {
