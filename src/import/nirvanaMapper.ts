@@ -101,16 +101,17 @@ export function computeSummary(items: NirvanaItem[]): ImportSummary {
 	return { totalItems: items.length, activeTasks, completedTasks, cancelledTasks, activeProjects, somedayProjects, recurringTemplates, referenceItems };
 }
 
-/** Discover all unique non-@ tags across importable items (for user to select which are AOFs). */
+/** Discover all unique non-@ tags across importable items, excluding project names. */
 export function discoverTags(items: NirvanaItem[]): string[] {
+	const projectNames = new Set(items.filter(i => i.type === NirvanaType.Project).map(i => i.name.toLowerCase()));
 	const seen = new Set<string>();
 	const tags: string[] = [];
 	for (const item of items) {
-		if (item.type === NirvanaType.ReferenceItem || item.type === NirvanaType.ReferenceList) continue;
+		if (item.type !== NirvanaType.Task) continue;
 		if (item.completed > 0 || item.state === NirvanaState.Completed) continue;
 		for (const t of item.tags.split(",")) {
 			const trimmed = t.trim();
-			if (trimmed && !trimmed.startsWith("@") && !seen.has(trimmed.toLowerCase())) {
+			if (trimmed && !trimmed.startsWith("@") && !seen.has(trimmed.toLowerCase()) && !projectNames.has(trimmed.toLowerCase())) {
 				seen.add(trimmed.toLowerCase());
 				tags.push(trimmed);
 			}

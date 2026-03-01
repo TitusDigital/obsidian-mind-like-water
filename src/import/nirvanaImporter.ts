@@ -103,14 +103,16 @@ export async function runNirvanaImport(
 		}
 	}
 
-	// ── Phase 3: Write standalone active tasks ───────────────────
-	const importPath = normalizePath("MLW/Nirvana Import.md");
-	if (standaloneActive.length > 0) {
-		onProgress({ phase: "Importing active tasks", current: 0, total: standaloneActive.length });
-		await writeTaskFile(app, store, importPath, standaloneActive, aofNames, false, onProgress, result);
-	}
+	// Dedup recurring instances: same name + multiple due dates → keep next upcoming
+	const dedupedActive = deduplicateRecurring(standaloneActive);
+	result.tasksSkipped += standaloneActive.length - dedupedActive.length;
 
-	// ── Phase 4: Write standalone completed tasks ────────────────
+	// ── Phase 3–4: Write standalone tasks ─────────────────────────
+	const importPath = normalizePath("MLW/Nirvana Import.md");
+	if (dedupedActive.length > 0) {
+		onProgress({ phase: "Importing active tasks", current: 0, total: dedupedActive.length });
+		await writeTaskFile(app, store, importPath, dedupedActive, aofNames, false, onProgress, result);
+	}
 	if (standaloneCompleted.length > 0) {
 		const completedPath = normalizePath("MLW/Nirvana Import - Completed.md");
 		onProgress({ phase: "Importing completed tasks", current: 0, total: standaloneCompleted.length });
@@ -118,8 +120,7 @@ export async function runNirvanaImport(
 	}
 
 	// ── Phase 5: Append tasks to project files ───────────────────
-	let projIdx = 0;
-	const projTotal = projectTasks.size;
+	let projIdx = 0, projTotal = projectTasks.size;
 	for (const [projId, tasks] of projectTasks) {
 		projIdx++;
 		const proj = projectMap.get(projId);
@@ -135,19 +136,13 @@ export async function runNirvanaImport(
 	}
 
 	// ── Phase 6: Auto-add new contexts to settings ───────────────
-	const existingContexts = new Set(settings.contexts.map(c => c.toLowerCase()));
-	const newContexts: string[] = [];
+	const ctxSet = new Set(settings.contexts.map(c => c.toLowerCase()));
+	const newCtx: string[] = [];
 	for (const item of taskItems) {
 		const { context } = mapTags(item.tags, aofNames);
-		if (context !== null && !existingContexts.has(context.toLowerCase())) {
-			existingContexts.add(context.toLowerCase());
-			newContexts.push(context);
-		}
+		if (context !== null && !ctxSet.has(context.toLowerCase())) { ctxSet.add(context.toLowerCase()); newCtx.push(context); }
 	}
-	if (newContexts.length > 0) {
-		store.updateSettings({ contexts: [...settings.contexts, ...newContexts] });
-	}
-
+	if (newCtx.length > 0) store.updateSettings({ contexts: [...settings.contexts, ...newCtx] });
 	await store.saveImmediate();
 	onProgress({ phase: "Complete", current: 1, total: 1 });
 	return result;
@@ -182,17 +177,11 @@ async function writeTaskFile(
 		lines.push("");
 	}
 
-	// Ensure MLW folder exists
 	const folder = filePath.split("/").slice(0, -1).join("/");
-	if (folder && !(await app.vault.adapter.exists(folder))) {
-		await app.vault.createFolder(folder);
-	}
+	if (folder && !(await app.vault.adapter.exists(folder))) await app.vault.createFolder(folder);
 
-	// Generate IDs and replace placeholders
-	const content = lines.join("\n");
-	let finalContent = content;
+	let finalContent = lines.join("\n");
 	const entries: { lineNum: number; id: string; item: NirvanaItem }[] = [];
-
 	for (const { lineIdx, item } of taskLineMap) {
 		const id = store.generateId();
 		finalContent = finalContent.replace("<!-- mlw:PLACEHOLDER -->", `<!-- mlw:${id} -->`);
@@ -279,6 +268,29 @@ function groupByStatus(items: NirvanaItem[]): { header: string; items: NirvanaIt
 	}
 	return ["Inbox", "Next Actions", "Scheduled", "Someday / Maybe", "Dropped"]
 		.filter(h => buckets.has(h)).map(h => ({ header: h, items: buckets.get(h)! }));
+}
+
+/** For tasks with duplicate names and due dates, keep only the next upcoming instance. */
+function deduplicateRecurring(items: NirvanaItem[]): NirvanaItem[] {
+	const byName = new Map<string, NirvanaItem[]>();
+	for (const item of items) {
+		const group = byName.get(item.name) ?? [];
+		group.push(item);
+		byName.set(item.name, group);
+	}
+	const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+	const result: NirvanaItem[] = [];
+	for (const [, group] of byName) {
+		if (group.length === 1 || !group.every(i => i.duedate.length === 8)) {
+			result.push(...group);
+		} else {
+			// Pick the nearest future due date, or most recent past if all overdue
+			const sorted = group.sort((a, b) => a.duedate.localeCompare(b.duedate));
+			const next = sorted.find(i => i.duedate >= today) ?? sorted[sorted.length - 1]!;
+			result.push(next);
+		}
+	}
+	return result;
 }
 
 function yieldToUI(): Promise<void> {
