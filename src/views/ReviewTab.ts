@@ -3,6 +3,7 @@ import type { DataStore } from "data/DataStore";
 import { TaskStatus, ProjectStatus, type Task } from "data/models";
 import { readAllProjects } from "data/ProjectReader";
 import type { IntegrityReport } from "services/IntegrityChecker";
+import { isRecurringTask, RecurrenceDeleteModal } from "components/RecurrenceDelete";
 
 const CHECKBOX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
@@ -118,7 +119,10 @@ export function renderReview(
 					case "inbox": store.updateTask(task.id, { status: TaskStatus.Inbox }); break;
 					case "next": store.updateTask(task.id, { status: TaskStatus.NextAction }); break;
 					case "drop": store.updateTask(task.id, { status: TaskStatus.Dropped }); break;
-					case "delete": store.deleteTask(task.id); break;
+					case "delete":
+						if (isRecurringTask(task)) { new RecurrenceDeleteModal(app, store, task, () => {}).open(); }
+						else { store.deleteTask(task.id); }
+						break;
 				}
 			});
 			select.addEventListener("click", (e) => e.stopPropagation());
