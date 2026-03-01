@@ -35,6 +35,7 @@ function parseProjectFile(app: App, file: TFile): ProjectMeta | null {
 }
 
 function parseStatus(s: string): ProjectStatus {
+	if (s === "someday") return ProjectStatus.Someday;
 	if (s === "completed") return ProjectStatus.Completed;
 	if (s === "on_hold") return ProjectStatus.OnHold;
 	if (s === "dropped") return ProjectStatus.Dropped;

@@ -24,6 +24,7 @@ export enum CaptureLocation {
 /** Project lifecycle statuses (stored in YAML frontmatter) */
 export enum ProjectStatus {
 	Active = "active",
+	Someday = "someday",
 	Completed = "completed",
 	OnHold = "on_hold",
 	Dropped = "dropped",

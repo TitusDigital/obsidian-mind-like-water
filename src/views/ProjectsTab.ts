@@ -88,8 +88,8 @@ function renderCard(listEl: HTMLElement, card: ProjectCard, app: App): void {
 	footer.createSpan({ text: `${completedTasks}/${totalTasks} tasks`, cls: "mlw-project-card__count" });
 
 	const select = footer.createEl("select", { cls: "mlw-project-card__status" });
-	for (const s of [ProjectStatus.Active, ProjectStatus.OnHold, ProjectStatus.Completed, ProjectStatus.Dropped]) {
-		const label = s === "active" ? "Active" : s === "on_hold" ? "On Hold" : s === "completed" ? "Completed" : "Dropped";
+	for (const s of [ProjectStatus.Active, ProjectStatus.Someday, ProjectStatus.OnHold, ProjectStatus.Completed, ProjectStatus.Dropped]) {
+		const label = s === "active" ? "Active" : s === "someday" ? "Someday" : s === "on_hold" ? "On Hold" : s === "completed" ? "Completed" : "Dropped";
 		select.createEl("option", { text: label, value: s }).value = s;
 	}
 	select.value = project.status;

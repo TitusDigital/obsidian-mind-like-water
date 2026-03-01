@@ -241,7 +241,7 @@ export class DataStore {
 	}
 
 	/** Create a new project markdown file with frontmatter. */
-	async createProjectFile(aof: string, name: string, outcome: string): Promise<void> {
+	async createProjectFile(aof: string, name: string, outcome: string, status = "active"): Promise<void> {
 		const folder = normalizePath(this.data.settings.projectFolder);
 		const exists = await this.plugin.app.vault.adapter.exists(folder);
 		if (!exists) {
@@ -253,7 +253,7 @@ export class DataStore {
 			"---",
 			"mlw_type: project",
 			`title: "${name}"`,
-			"status: active",
+			`status: ${status}`,
 			`area_of_focus: "${aof}"`,
 			`successful_outcome: "${outcome}"`,
 			"sort_order: 0",

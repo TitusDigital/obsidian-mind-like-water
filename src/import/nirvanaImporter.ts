@@ -1,4 +1,4 @@
-import { normalizePath, type App, TFolder } from "obsidian";
+import { normalizePath, type App } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import { deriveAOFColor } from "data/models";
 import { NirvanaType, NirvanaState, type NirvanaItem, type ImportOptions, type ImportResult, type ImportProgress } from "./nirvanaTypes";
@@ -68,7 +68,8 @@ export async function runNirvanaImport(
 		}
 
 		try {
-			await store.createProjectFile(aof, filePath.replace(`${projectFolder}/`, "").replace(".md", ""), outcome);
+			const projStatus = (item.state === NirvanaState.Someday || item.state === NirvanaState.Later) ? "someday" : "active";
+			await store.createProjectFile(aof, filePath.replace(`${projectFolder}/`, "").replace(".md", ""), outcome, projStatus);
 			projectMap.set(item.id, { nirvanaId: item.id, title, filePath });
 			result.projectsCreated++;
 		} catch (e) {
