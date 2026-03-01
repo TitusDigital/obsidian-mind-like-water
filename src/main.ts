@@ -49,12 +49,7 @@ export default class MindLikeWaterPlugin extends Plugin {
 			},
 		});
 
-		this.addCommand({ id: "open-focus-list", name: "Open Focus List", callback: () => void this.openTab("focus") });
-		this.addCommand({ id: "open-inbox", name: "Open Inbox", callback: () => void this.openTab("inbox") });
-		this.addCommand({ id: "open-next-actions", name: "Open Next Actions", callback: () => void this.openTab("next") });
-		this.addCommand({ id: "open-scheduled", name: "Open Scheduled", callback: () => void this.openTab("scheduled") });
-		this.addCommand({ id: "open-someday", name: "Open Someday/Maybe", callback: () => void this.openTab("someday") });
-		this.addCommand({ id: "open-completed", name: "Open Completed", callback: () => void this.openTab("completed") });
+		this.addCommand({ id: "open-view", name: "Open Mind Like Water", callback: () => void this.openTab("focus") });
 
 		// ── View ──────────────────────────────────────────────
 		this.registerView(VIEW_TYPE_MLW_UNIFIED, (leaf) => new UnifiedTaskView(leaf, this.store));
