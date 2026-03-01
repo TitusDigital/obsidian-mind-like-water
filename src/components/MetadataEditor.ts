@@ -6,6 +6,7 @@ import {
 	STATUS_LABELS, ENERGY_LABELS,
 	createSelectGroup, createDateGroup, populateSelect,
 } from "components/fieldBuilders";
+import { buildRecurrenceSection } from "components/RecurrenceFields";
 
 let activeEditor: MetadataEditor | null = null;
 
@@ -134,6 +135,7 @@ export class MetadataEditor {
 			this.buildContextField(),
 		));
 		c.appendChild(this.buildStarToggle());
+		c.appendChild(buildRecurrenceSection(this.task, this.store, (f, v) => this.updateField(f, v)));
 		return c;
 	}
 
