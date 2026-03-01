@@ -1,6 +1,7 @@
 import type { Task } from "data/models";
 import type { DataStore } from "data/DataStore";
 import { getRecurrenceSummary, pauseTask, resumeTask } from "services/RecurrenceService";
+import { createCalendarInput } from "components/CalendarPicker";
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const DAY_CODES = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
@@ -251,13 +252,14 @@ function buildEndExtra(container: HTMLElement, current: { type: string; value: s
 		});
 		container.append(el("span", "mlw-recurrence-custom__label", "After"), input, el("span", "mlw-recurrence-custom__label", "times"));
 	} else if (current.type === "until") {
-		const input = document.createElement("input");
-		input.type = "date"; input.className = "mlw-editor-input";
-		input.value = current.value;
-		input.addEventListener("change", () => {
+		// Convert RRULE UNTIL value (YYYYMMDD) to ISO format for the picker
+		const isoVal = current.value.length === 8
+			? `${current.value.slice(0, 4)}-${current.value.slice(4, 6)}-${current.value.slice(6, 8)}`
+			: current.value;
+		const input = createCalendarInput("mlw-editor-input", isoVal || null, (v) => {
 			const base = stripEndCondition(task.recurrence_rule) ?? "RRULE:FREQ=DAILY";
-			const dateStr = input.value.replace(/-/g, "");
-			updateField("recurrence_rule", `${base};UNTIL=${dateStr}`);
+			if (v === null) { updateField("recurrence_rule", base); return; }
+			updateField("recurrence_rule", `${base};UNTIL=${v.replace(/-/g, "")}`);
 		});
 		container.appendChild(input);
 	}

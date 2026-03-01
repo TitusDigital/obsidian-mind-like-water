@@ -159,6 +159,55 @@
 .mlw-editor-select:focus,
 .mlw-editor-input:focus { border-color: var(--interactive-accent); }
 .mlw-editor-select { cursor: pointer; }
+.mlw-editor-input--date { cursor: pointer; }
+
+/* ── Calendar Date Picker ───────────────────────────── */
+.mlw-cal-overlay { position: fixed; inset: 0; z-index: 1002; }
+.mlw-cal {
+	position: fixed; z-index: 1003; width: 260px;
+	background: var(--background-primary);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 8px;
+	box-shadow: 0 12px 36px rgba(0, 0, 0, 0.3);
+	font-family: var(--font-interface);
+	padding: 8px; user-select: none;
+}
+.theme-light .mlw-cal { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12); }
+.mlw-cal__header {
+	display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;
+}
+.mlw-cal__nav {
+	background: none; border: none; cursor: pointer;
+	padding: 4px 8px; border-radius: 4px; font-size: 14px; color: var(--text-muted);
+}
+.mlw-cal__nav:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.mlw-cal__title { font-size: 13px; font-weight: 600; color: var(--text-normal); }
+.mlw-cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+.mlw-cal__dow {
+	font-size: 10px; color: var(--text-faint); text-align: center;
+	padding: 4px 0; font-weight: 600; text-transform: uppercase;
+}
+.mlw-cal__day {
+	font-size: 12px; text-align: center; padding: 5px 0;
+	border-radius: 4px; cursor: pointer; color: var(--text-normal);
+}
+.mlw-cal__day:hover { background: var(--background-modifier-hover); }
+.mlw-cal__day--outside { color: var(--text-faint); }
+.mlw-cal__day--today { font-weight: 700; color: var(--interactive-accent); }
+.mlw-cal__day--selected { background: var(--interactive-accent); color: var(--text-on-accent); }
+.mlw-cal__day--selected:hover { background: var(--interactive-accent); filter: brightness(1.1); }
+.mlw-cal__footer {
+	display: flex; justify-content: space-between;
+	margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--background-modifier-border);
+}
+.mlw-cal__today, .mlw-cal__clear {
+	font-size: 11px; padding: 3px 8px; border-radius: 4px; cursor: pointer;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary-alt); color: var(--text-muted);
+}
+.mlw-cal__today:hover, .mlw-cal__clear:hover {
+	color: var(--text-normal); background: var(--background-modifier-hover);
+}
 
 /* Star toggle */
 .mlw-editor-star {

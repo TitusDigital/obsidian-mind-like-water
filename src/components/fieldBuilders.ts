@@ -1,4 +1,5 @@
 import { TaskStatus, EnergyLevel } from "data/models";
+import { createCalendarInput } from "components/CalendarPicker";
 
 /** Status enum → human-readable labels */
 export const STATUS_LABELS: Record<string, string> = {
@@ -45,7 +46,7 @@ export function createSelectGroup(
 	return group;
 }
 
-/** Create a labeled <input type="date"> field group. */
+/** Create a labeled date field group with calendar dropdown picker. */
 export function createDateGroup(
 	label: string, value: string | null,
 	onChange: (value: string) => void,
@@ -57,11 +58,7 @@ export function createDateGroup(
 	lbl.textContent = label;
 	group.appendChild(lbl);
 
-	const input = document.createElement("input");
-	input.type = "date";
-	input.className = "mlw-editor-input";
-	input.value = value ?? "";
-	input.addEventListener("change", () => onChange(input.value));
+	const input = createCalendarInput("mlw-editor-input", value, (v) => onChange(v ?? ""));
 	group.appendChild(input);
 	return group;
 }
