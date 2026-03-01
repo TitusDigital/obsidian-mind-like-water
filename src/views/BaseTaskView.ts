@@ -16,8 +16,6 @@ export interface ViewConfig {
 	title: string;
 	emptyText: string;
 	emptyHint: string;
-	/** Set to false for views that should never filter by AOF (e.g. Inbox). */
-	showAOFSelector?: boolean;
 }
 
 /**
@@ -27,7 +25,6 @@ export interface ViewConfig {
 export abstract class BaseTaskView extends ItemView {
 	protected listEl!: HTMLElement;
 	protected unsubscribeViewState: (() => void) | null = null;
-	private aofSelectEl: HTMLSelectElement | null = null;
 
 	constructor(leaf: WorkspaceLeaf, protected readonly store: DataStore) {
 		super(leaf);
@@ -49,22 +46,6 @@ export abstract class BaseTaskView extends ItemView {
 
 	protected buildLayout(): void {
 		const { contentEl } = this;
-		const cfg = this.getViewConfig();
-		const header = contentEl.createDiv("mlw-view-header");
-		header.createEl("h4", { text: cfg.title });
-
-		if (cfg.showAOFSelector !== false) {
-			this.aofSelectEl = header.createEl("select", { cls: "mlw-aof-selector" });
-			this.populateAOFSelector();
-			this.aofSelectEl.addEventListener("change", () => {
-				ViewState.getInstance().setActiveAOF(this.aofSelectEl?.value ?? "");
-			});
-			this.unsubscribeViewState = ViewState.getInstance().subscribe(() => {
-				this.syncAOFSelector();
-				this.refresh();
-			});
-		}
-
 		this.listEl = contentEl.createDiv("mlw-view-list");
 	}
 
@@ -72,24 +53,6 @@ export abstract class BaseTaskView extends ItemView {
 		this.unsubscribeViewState?.();
 		this.unsubscribeViewState = null;
 		this.contentEl.empty();
-	}
-
-	private populateAOFSelector(): void {
-		if (this.aofSelectEl === null) return;
-		this.aofSelectEl.empty();
-		const allOpt = this.aofSelectEl.createEl("option", { text: "All", value: "" });
-		allOpt.value = "";
-		for (const aof of this.store.getSettings().areasOfFocus) {
-			const opt = this.aofSelectEl.createEl("option", { text: aof.name, value: aof.name });
-			opt.value = aof.name;
-		}
-		this.aofSelectEl.value = ViewState.getInstance().getActiveAOF();
-	}
-
-	private syncAOFSelector(): void {
-		if (this.aofSelectEl !== null) {
-			this.aofSelectEl.value = ViewState.getInstance().getActiveAOF();
-		}
 	}
 
 	/** Called by the plugin when tasks change. */
@@ -107,14 +70,23 @@ export abstract class BaseTaskView extends ItemView {
 		empty.createEl("p", { text: cfg.emptyHint, cls: "mlw-view-empty__hint" });
 	}
 
-	/** Render a group header with optional colored dot. */
-	protected renderGroupHeader(name: string, dotColor?: string): void {
+	/** Render a group header with optional colored dot, divider line, and count. */
+	protected renderGroupHeader(name: string, dotColor?: string, count?: number): void {
 		const group = this.listEl.createDiv("mlw-view-group");
 		if (dotColor !== undefined) {
 			const dot = group.createSpan("mlw-view-group__dot");
 			dot.style.background = dotColor;
 		}
 		group.createSpan({ text: name, cls: "mlw-view-group__name" });
+		group.createDiv("mlw-view-group__line");
+		if (count !== undefined) group.createSpan({ text: String(count), cls: "mlw-view-group__count" });
+	}
+
+	/** Render a content header with tab title and task count. */
+	protected renderContentHeader(title: string, count: number): void {
+		const header = this.listEl.createDiv("mlw-content-header");
+		header.createEl("span", { text: title, cls: "mlw-content-header__title" });
+		header.createEl("span", { text: `${count} task${count !== 1 ? "s" : ""}`, cls: "mlw-content-header__count" });
 	}
 
 	/** Render a clickable task row with complete checkbox and star toggle. */
