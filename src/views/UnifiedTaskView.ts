@@ -1,14 +1,13 @@
-import { type WorkspaceLeaf, setIcon } from "obsidian";
 import type { DataStore } from "data/DataStore";
-import { TaskStatus, ProjectStatus, type Task } from "data/models";
-import { readAllProjects } from "data/ProjectReader";
+import { TaskStatus, type Task } from "data/models";
 import { VIEW_TYPE_MLW_UNIFIED } from "views/ViewConstants";
 import { BaseTaskView, type ViewConfig } from "views/BaseTaskView";
 import { FilterBar } from "views/FilterBar";
-import { ViewState, type GroupMode } from "views/ViewState";
+import { ViewState } from "views/ViewState";
 import { renderProjects } from "views/ProjectsTab";
 import { renderReview } from "views/ReviewTab";
 import { type Bucket, bucketByDate } from "views/DateUtils";
+import { buildToolbar } from "views/Toolbar";
 import type { IntegrityReport } from "services/IntegrityChecker";
 
 function localToday(): string {
@@ -19,24 +18,26 @@ function localToday(): string {
 type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects" | "review";
 const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects", "review"];
 
-const TAB_CFG: Record<TabId, { label: string; icon: string; filter: boolean; toggle: boolean; group: GroupMode | false; empty: string; hint: string }> = {
-	focus: { label: "Focus", icon: "star", filter: false, toggle: true, group: "none", empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
-	inbox: { label: "Inbox", icon: "inbox", filter: false, toggle: false, group: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
-	next: { label: "Next", icon: "zap", filter: true, toggle: true, group: "aof", empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
-	scheduled: { label: "Scheduled", icon: "calendar", filter: true, toggle: false, group: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
-	someday: { label: "Someday", icon: "coffee", filter: false, toggle: false, group: "aof", empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
-	completed: { label: "Completed", icon: "check-circle", filter: false, toggle: false, group: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
-	projects: { label: "Projects", icon: "folder", filter: false, toggle: false, group: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
-	review: { label: "Review", icon: "clipboard-check", filter: false, toggle: false, group: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
+import type { GroupMode } from "views/ViewState";
+
+const TAB_CFG: Record<TabId, { label: string; pill: string; filter: boolean; toggle: boolean; group: GroupMode | false; empty: string; hint: string }> = {
+	focus: { label: "Focus", pill: "Focus", filter: false, toggle: true, group: "none", empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
+	inbox: { label: "Inbox", pill: "Inbox", filter: false, toggle: false, group: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
+	next: { label: "Next", pill: "Next", filter: true, toggle: true, group: "aof", empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
+	scheduled: { label: "Scheduled", pill: "Sched", filter: true, toggle: false, group: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
+	someday: { label: "Someday", pill: "Someday", filter: false, toggle: false, group: "aof", empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
+	completed: { label: "Completed", pill: "Done", filter: false, toggle: false, group: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
+	projects: { label: "Projects", pill: "Projects", filter: false, toggle: false, group: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
+	review: { label: "Review", pill: "Review", filter: false, toggle: false, group: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
 };
 
 export class UnifiedTaskView extends BaseTaskView {
 	private activeTab: TabId = "focus";
 	private showCompleted = false;
 	private filterBar: FilterBar | null = null;
-	private appHeaderEl!: HTMLElement;
+	private toolbarEl!: HTMLElement;
 	private controlsEl!: HTMLElement;
-	private tabBtns = new Map<TabId, HTMLElement>();
+	private tabBtns = new Map<string, HTMLElement>();
 	private integrityReport: IntegrityReport | null = null;
 
 	getViewType(): string { return VIEW_TYPE_MLW_UNIFIED; }
@@ -52,59 +53,38 @@ export class UnifiedTaskView extends BaseTaskView {
 
 	protected override buildLayout(): void {
 		const { contentEl } = this;
-		this.appHeaderEl = contentEl.createDiv("mlw-app-header");
-		const tabBar = contentEl.createDiv("mlw-tab-bar");
-		for (const id of TAB_ORDER) {
-			const cfg = TAB_CFG[id];
-			const btn = tabBar.createEl("button", {
-				cls: `mlw-tab-btn${id === this.activeTab ? " mlw-tab-btn--active" : ""}`,
-				attr: { "aria-label": cfg.label },
-			});
-			const iconEl = btn.createSpan("mlw-tab-icon");
-			setIcon(iconEl, cfg.icon);
-			btn.createSpan({ text: cfg.label, cls: "mlw-tab-label" });
-			btn.addEventListener("click", () => this.switchTab(id));
-			this.tabBtns.set(id, btn);
-		}
+		this.toolbarEl = contentEl.createDiv("mlw-toolbar");
 		this.controlsEl = contentEl.createDiv("mlw-view-controls");
 		this.listEl = contentEl.createDiv("mlw-view-list");
-		this.rebuildAppHeader();
+		this.rebuildToolbar();
 		this.rebuildControls();
 		this.unsubscribeViewState = ViewState.getInstance().subscribe(() => {
-			this.rebuildAppHeader();
+			this.rebuildToolbar();
 			this.rebuildControls();
 			this.refresh();
 		});
 	}
 
+	private rebuildToolbar(): void {
+		buildToolbar(this.toolbarEl, {
+			activeTab: this.activeTab,
+			tabLabels: TAB_ORDER.map(id => [id, TAB_CFG[id].pill] as [string, string]),
+			groupDefault: TAB_CFG[this.activeTab].group,
+			onSwitchTab: (id) => this.switchTab(id),
+			store: this.store,
+		}, this.tabBtns);
+	}
+
 	switchTab(tabId: string): void {
 		const id = tabId as TabId;
 		if (id === this.activeTab) return;
-		this.tabBtns.get(this.activeTab)?.removeClass("mlw-tab-btn--active");
 		this.activeTab = id;
-		this.tabBtns.get(id)?.addClass("mlw-tab-btn--active");
 		this.showCompleted = false;
 		this.filterBar = null;
-		const cfg = TAB_CFG[id];
-		if (cfg.group !== false) ViewState.getInstance().setGroupMode(cfg.group);
+		if (TAB_CFG[id].group !== false) ViewState.getInstance().setGroupMode(TAB_CFG[id].group);
+		this.rebuildToolbar();
 		this.rebuildControls();
 		void this.renderContent();
-	}
-
-	private rebuildAppHeader(): void {
-		this.appHeaderEl.empty();
-		const sel = this.appHeaderEl.createEl("select", { cls: "mlw-aof-selector" });
-		sel.createEl("option", { text: "All Areas", value: "" }).value = "";
-		for (const aof of this.store.getSettings().areasOfFocus) {
-			sel.createEl("option", { text: aof.name, value: aof.name }).value = aof.name;
-		}
-		sel.value = ViewState.getInstance().getActiveAOF();
-		sel.addEventListener("change", () => ViewState.getInstance().setActiveAOF(sel.value));
-		const aof = ViewState.getInstance().getActiveAOF();
-		const match = (v: string) => aof === "" || v === aof;
-		const taskCount = this.store.getAllTasks().filter(t => t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped && match(t.area_of_focus)).length;
-		const projCount = readAllProjects(this.app, this.store.getSettings().projectFolder).filter(p => p.status === ProjectStatus.Active && match(p.area_of_focus)).length;
-		this.appHeaderEl.createSpan({ text: `${taskCount} tasks \u00B7 ${projCount} projects`, cls: "mlw-app-header__stats" });
 	}
 
 	private rebuildControls(): void {
@@ -123,21 +103,12 @@ export class UnifiedTaskView extends BaseTaskView {
 				void this.renderContent();
 			});
 		}
-		if (c.group !== false) {
-			const bar = this.controlsEl.createDiv("mlw-group-selector");
-			bar.createSpan({ text: "Group:", cls: "mlw-group-selector__label" });
-			const mode = ViewState.getInstance().getGroupMode();
-			for (const [m, l] of [["aof", "Area"], ["project", "Project"], ["context", "Context"], ["none", "None"]] as const) {
-				const pill = bar.createEl("button", { text: l, cls: `mlw-group-selector__pill${mode === m ? " mlw-group-selector__pill--active" : ""}` });
-				pill.addEventListener("click", () => ViewState.getInstance().setGroupMode(m as GroupMode));
-			}
-		}
 		if (c.filter) {
 			this.filterBar = new FilterBar(this.controlsEl, () => void this.renderContent());
 		}
 	}
 
-	override refresh(): void { this.rebuildAppHeader(); super.refresh(); }
+	override refresh(): void { this.rebuildToolbar(); super.refresh(); }
 
 	async renderContent(): Promise<void> {
 		this.listEl.empty();
