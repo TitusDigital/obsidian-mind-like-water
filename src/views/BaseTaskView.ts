@@ -26,6 +26,8 @@ export interface ViewConfig {
 export abstract class BaseTaskView extends ItemView {
 	protected listEl!: HTMLElement;
 	protected unsubscribeViewState: (() => void) | null = null;
+	protected renderGen = 0;
+	private refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(leaf: WorkspaceLeaf, protected readonly store: DataStore) {
 		super(leaf);
@@ -36,6 +38,9 @@ export abstract class BaseTaskView extends ItemView {
 
 	/** Subclasses populate listEl with their task data. */
 	abstract renderContent(): Promise<void>;
+
+	/** Returns true if a newer render has started (caller should abort). */
+	protected isStaleRender(gen: number): boolean { return gen !== this.renderGen; }
 
 	async onOpen(): Promise<void> {
 		const { contentEl } = this;
@@ -53,12 +58,17 @@ export abstract class BaseTaskView extends ItemView {
 	async onClose(): Promise<void> {
 		this.unsubscribeViewState?.();
 		this.unsubscribeViewState = null;
+		if (this.refreshTimer !== null) clearTimeout(this.refreshTimer);
 		this.contentEl.empty();
 	}
 
-	/** Called by the plugin when tasks change. */
+	/** Called by the plugin when tasks change. Debounced to coalesce rapid updates. */
 	refresh(): void {
-		void this.renderContent();
+		if (this.refreshTimer !== null) clearTimeout(this.refreshTimer);
+		this.refreshTimer = setTimeout(() => {
+			this.refreshTimer = null;
+			void this.renderContent();
+		}, 50);
 	}
 
 	// ── Shared rendering helpers ──────────────────────────────────

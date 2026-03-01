@@ -115,20 +115,21 @@ export class UnifiedTaskView extends BaseTaskView {
 	}
 
 	async renderContent(): Promise<void> {
+		const gen = ++this.renderGen;
 		this.listEl.empty();
 		switch (this.activeTab) {
-			case "focus": await this.renderFocus(); break;
-			case "inbox": await this.renderInbox(); break;
-			case "next": await this.renderNextActions(); break;
-			case "scheduled": await this.renderScheduled(); break;
-			case "someday": await this.renderSomeday(); break;
-			case "completed": await this.renderCompleted(); break;
+			case "focus": await this.renderFocus(gen); break;
+			case "inbox": await this.renderInbox(gen); break;
+			case "next": await this.renderNextActions(gen); break;
+			case "scheduled": await this.renderScheduled(gen); break;
+			case "someday": await this.renderSomeday(gen); break;
+			case "completed": await this.renderCompleted(gen); break;
 			case "projects": renderProjects(this.listEl, this.store, this.app); break;
 			case "review": renderReview(this.listEl, this.store, this.app, this.integrityReport, (id) => this.switchTab(id), () => this.refreshIntegrity()); break;
 		}
 	}
 
-	private async renderFocus(): Promise<void> {
+	private async renderFocus(gen: number): Promise<void> {
 		const tasks = this.filterByActiveAOF(this.getFocusTasks());
 		const recent = this.getRecentCompleted();
 		const completed = this.showCompleted ? recent : [];
@@ -145,28 +146,31 @@ export class UnifiedTaskView extends BaseTaskView {
 			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length);
 			active.sort(focusSort);
 			for (const task of active) {
+				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
 				this.renderTaskRow(task, text, this.buildFocusBadges(task));
 			}
 			for (const task of done) {
+				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
 				this.renderCompletedRow(task, text, task.completed_date !== null ? [this.formatDate(task.completed_date)] : []);
 			}
 		}
 	}
 
-	private async renderInbox(): Promise<void> {
+	private async renderInbox(gen: number): Promise<void> {
 		const tasks = this.store.getTasksByStatus(TaskStatus.Inbox)
 			.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
 		if (tasks.length === 0) { this.renderEmpty(); return; }
 		this.renderContentHeader("Inbox", tasks.length);
 		for (const task of tasks) {
+			if (this.isStaleRender(gen)) return;
 			const text = await this.readTaskText(task);
 			this.renderTaskRow(task, text, [this.shortenPath(task.source_file), this.formatDate(task.created)]);
 		}
 	}
 
-	private async renderNextActions(): Promise<void> {
+	private async renderNextActions(gen: number): Promise<void> {
 		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.NextAction));
 		if (this.filterBar !== null) { this.filterBar.rebuild(tasks); tasks = this.filterBar.applyFilters(tasks); }
 		const recent = this.getRecentCompleted();
@@ -180,6 +184,7 @@ export class UnifiedTaskView extends BaseTaskView {
 			const done = gt.filter(t => t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped);
 			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length);
 			for (const task of active) {
+				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
 				const meta: string[] = [];
 				if (task.due_date !== null && task.due_date <= today) meta.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
@@ -189,13 +194,14 @@ export class UnifiedTaskView extends BaseTaskView {
 				this.renderTaskRow(task, text, meta);
 			}
 			for (const task of done) {
+				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
 				this.renderCompletedRow(task, text, task.completed_date !== null ? [this.formatDate(task.completed_date)] : []);
 			}
 		}
 	}
 
-	private async renderScheduled(): Promise<void> {
+	private async renderScheduled(gen: number): Promise<void> {
 		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Scheduled));
 		if (this.filterBar !== null) { this.filterBar.rebuild(tasks); tasks = this.filterBar.applyFilters(tasks); }
 		if (tasks.length === 0) { this.renderEmpty(); return; }
@@ -206,6 +212,7 @@ export class UnifiedTaskView extends BaseTaskView {
 			if (items === undefined || items.length === 0) continue;
 			this.renderGroupHeader(label, undefined, items.length);
 			for (const task of items) {
+				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
 				const meta: string[] = [];
 				if (task.start_date !== null) meta.push(this.formatDate(task.start_date));
@@ -215,20 +222,21 @@ export class UnifiedTaskView extends BaseTaskView {
 		}
 	}
 
-	private async renderSomeday(): Promise<void> {
+	private async renderSomeday(gen: number): Promise<void> {
 		const tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Someday));
 		if (tasks.length === 0) { this.renderEmpty(); return; }
 		this.renderContentHeader("Someday", tasks.length, undefined, true);
 		for (const { name, color, tasks: gt } of this.groupTasks(tasks, ViewState.getInstance().getGroupMode())) {
 			if (name !== "") this.renderGroupHeader(name, color, gt.length);
 			for (const task of gt) {
+				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
 				this.renderTaskRow(task, text, task.project !== null ? [task.project] : []);
 			}
 		}
 	}
 
-	private async renderCompleted(): Promise<void> {
+	private async renderCompleted(gen: number): Promise<void> {
 		const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 		const tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Completed))
 			.filter(t => t.completed_date !== null && t.completed_date >= cutoff)
@@ -239,6 +247,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		for (const t of tasks) { const d = t.completed_date?.slice(0, 10) ?? ""; dayCounts.set(d, (dayCounts.get(d) ?? 0) + 1); }
 		let currentDay = "";
 		for (const task of tasks) {
+			if (this.isStaleRender(gen)) return;
 			const day = task.completed_date?.slice(0, 10) ?? "";
 			if (day !== currentDay) { currentDay = day; this.renderGroupHeader(this.formatDate(day), undefined, dayCounts.get(day)); }
 			const text = await this.readTaskText(task);
