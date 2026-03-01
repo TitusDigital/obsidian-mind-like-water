@@ -90,6 +90,10 @@ export default class MindLikeWaterPlugin extends Plugin {
 
 		// ── Integrity Check (deferred for metadata cache warmup) ─
 		setTimeout(() => {
+			const repaired = this.store.repairTaskProjectAOFs();
+			if (repaired > 0) {
+				console.log(`MLW: Repaired AOF on ${repaired} task(s) to match their project`);
+			}
 			void runIntegrityCheck(this.app, this.store).then(report => {
 				if (report.autoCleanedCount > 0) {
 					console.log(`MLW: Auto-cleaned ${report.autoCleanedCount} orphaned task(s)`);

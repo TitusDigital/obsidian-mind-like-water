@@ -9,6 +9,7 @@ import {
 	DEFAULT_DATA,
 	DEFAULT_SETTINGS,
 } from "data/models";
+import { readAllProjects } from "data/ProjectReader";
 
 const ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 const ID_LENGTH = 6;
@@ -229,15 +230,34 @@ export class DataStore {
 
 	// ── Projects ────────────────────────────────────────────────────
 
-	/** Get unique project names used by tasks in a given Area of Focus. */
+	/** Get project titles whose frontmatter area_of_focus matches the given AOF. */
 	getProjectsForAOF(aof: string): string[] {
-		const projects = new Set<string>();
+		const projects = readAllProjects(this.plugin.app, this.data.settings.projectFolder);
+		return projects.filter(p => p.area_of_focus === aof).map(p => p.title).sort();
+	}
+
+	/** Look up a project's area_of_focus from its frontmatter. */
+	getProjectAOF(projectName: string): string {
+		const projects = readAllProjects(this.plugin.app, this.data.settings.projectFolder);
+		return projects.find(p => p.title === projectName)?.area_of_focus ?? "";
+	}
+
+	/** Repair tasks whose AOF doesn't match their project's AOF. Returns count fixed. */
+	repairTaskProjectAOFs(): number {
+		const projects = readAllProjects(this.plugin.app, this.data.settings.projectFolder);
+		const aofMap = new Map(projects.map(p => [p.title, p.area_of_focus]));
+		let fixed = 0;
 		for (const task of Object.values(this.data.tasks)) {
-			if (task.area_of_focus === aof && task.project !== null) {
-				projects.add(task.project);
+			if (task.project === null) continue;
+			const projectAOF = aofMap.get(task.project);
+			if (projectAOF !== undefined && projectAOF !== "" && task.area_of_focus !== projectAOF) {
+				task.area_of_focus = projectAOF;
+				task.modified = new Date().toISOString();
+				fixed++;
 			}
 		}
-		return [...projects].sort();
+		if (fixed > 0) { this.scheduleSave(); this.notifyChange(); }
+		return fixed;
 	}
 
 	/** Create a new project markdown file with frontmatter. */
