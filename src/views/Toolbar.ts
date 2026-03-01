@@ -31,8 +31,10 @@ export function buildToolbar(el: HTMLElement, cfg: ToolbarConfig, tabBtns: Map<s
 
 	el.createDiv("mlw-toolbar__sep");
 
-	// Tab pills
-	const tabsEl = el.createDiv("mlw-toolbar__tabs");
+	// Tab pills with label
+	const tabsWrap = el.createDiv("mlw-toolbar__section");
+	tabsWrap.createDiv({ text: "Lists", cls: "mlw-toolbar__label" });
+	const tabsEl = tabsWrap.createDiv("mlw-toolbar__tabs");
 	const inboxCount = cfg.store.getTasksByStatus(TaskStatus.Inbox).length;
 	for (const [id, label] of cfg.tabLabels) {
 		const btn = tabsEl.createEl("button", {
@@ -45,12 +47,14 @@ export function buildToolbar(el: HTMLElement, cfg: ToolbarConfig, tabBtns: Map<s
 		tabBtns.set(id, btn);
 	}
 
-	// Spacer + group pills
+	// Group pills with label
 	if (cfg.groupDefault !== false) {
-		el.createDiv("mlw-toolbar__spacer");
+		const groupWrap = el.createDiv("mlw-toolbar__section mlw-toolbar__section--group");
+		groupWrap.createDiv({ text: "Group by:", cls: "mlw-toolbar__label" });
+		const groupRow = groupWrap.createDiv("mlw-toolbar__groups");
 		const mode = ViewState.getInstance().getGroupMode();
 		for (const [m, l] of GROUP_LABELS) {
-			const pill = el.createEl("button", { text: l, cls: `mlw-group-pill${mode === m ? " mlw-group-pill--active" : ""}` });
+			const pill = groupRow.createEl("button", { text: l, cls: `mlw-group-pill${mode === m ? " mlw-group-pill--active" : ""}` });
 			pill.addEventListener("click", () => ViewState.getInstance().setGroupMode(m));
 		}
 	}
