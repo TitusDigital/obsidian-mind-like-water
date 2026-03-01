@@ -45,34 +45,37 @@ export async function runNirvanaImport(
 
 	// ── Phase 1: Create project files ────────────────────────────
 	const projectMap = new Map<string, ProjectInfo>();
+	const projects = items.filter(i => {
+		if (i.type !== NirvanaType.Project) return false;
+		if (i.state === NirvanaState.ActiveProject) return options.importActiveProjects;
+		if (i.state === NirvanaState.Someday || i.state === NirvanaState.Later) return options.importSomedayProjects;
+		return false;
+	});
 
-	if (options.importActiveProjects) {
-		const projects = items.filter(i => i.type === NirvanaType.Project && i.state === NirvanaState.ActiveProject);
-		for (let idx = 0; idx < projects.length; idx++) {
-			const item = projects[idx]!;
-			onProgress({ phase: "Creating projects", current: idx + 1, total: projects.length });
+	for (let idx = 0; idx < projects.length; idx++) {
+		const item = projects[idx]!;
+		onProgress({ phase: "Creating projects", current: idx + 1, total: projects.length });
 
-			const title = sanitizeName(item.name) || "Untitled Project";
-			const { aof } = mapTags(item.tags, aofNames);
-			const outcome = extractOutcome(item.note);
+		const title = sanitizeName(item.name) || "Untitled Project";
+		const { aof } = mapTags(item.tags, aofNames);
+		const outcome = extractOutcome(item.note);
 
-			let filePath = normalizePath(`${projectFolder}/${title}.md`);
-			let suffix = 2;
-			while (await app.vault.adapter.exists(filePath)) {
-				filePath = normalizePath(`${projectFolder}/${title} ${suffix}.md`);
-				suffix++;
-			}
-
-			try {
-				await store.createProjectFile(aof, filePath.replace(`${projectFolder}/`, "").replace(".md", ""), outcome);
-				projectMap.set(item.id, { nirvanaId: item.id, title, filePath });
-				result.projectsCreated++;
-			} catch (e) {
-				result.errors.push(`Project "${title}": ${String(e)}`);
-			}
-
-			if (idx % 5 === 0) await yieldToUI();
+		let filePath = normalizePath(`${projectFolder}/${title}.md`);
+		let suffix = 2;
+		while (await app.vault.adapter.exists(filePath)) {
+			filePath = normalizePath(`${projectFolder}/${title} ${suffix}.md`);
+			suffix++;
 		}
+
+		try {
+			await store.createProjectFile(aof, filePath.replace(`${projectFolder}/`, "").replace(".md", ""), outcome);
+			projectMap.set(item.id, { nirvanaId: item.id, title, filePath });
+			result.projectsCreated++;
+		} catch (e) {
+			result.errors.push(`Project "${title}": ${String(e)}`);
+		}
+
+		if (idx % 5 === 0) await yieldToUI();
 	}
 
 	// ── Phase 2: Filter and prepare tasks ────────────────────────
@@ -270,7 +273,6 @@ function groupByStatus(items: NirvanaItem[]): { header: string; items: NirvanaIt
 		.filter(h => buckets.has(h)).map(h => ({ header: h, items: buckets.get(h)! }));
 }
 
-/** For tasks with duplicate names and due dates, keep only the next upcoming instance. */
 function deduplicateRecurring(items: NirvanaItem[]): NirvanaItem[] {
 	const byName = new Map<string, NirvanaItem[]>();
 	for (const item of items) {

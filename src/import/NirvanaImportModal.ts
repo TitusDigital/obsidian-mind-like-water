@@ -13,6 +13,7 @@ export class NirvanaImportModal extends Modal {
 		importActiveTasks: true,
 		importCompletedTasks: false,
 		importActiveProjects: true,
+		importSomedayProjects: true,
 	};
 
 	private summaryEl!: HTMLElement;
@@ -110,6 +111,8 @@ export class NirvanaImportModal extends Modal {
 			this.options.importCompletedTasks, (v) => { this.options.importCompletedTasks = v; });
 		this.addCheckbox(this.optionsEl, `Import active projects (${this.summary!.activeProjects})`,
 			this.options.importActiveProjects, (v) => { this.options.importActiveProjects = v; });
+		this.addCheckbox(this.optionsEl, `Import someday projects (${this.summary!.somedayProjects})`,
+			this.options.importSomedayProjects, (v) => { this.options.importSomedayProjects = v; });
 
 		if (this.discoveredTags.length > 0) {
 			this.optionsEl.createDiv({ text: "Areas of Focus (uncheck contacts/non-areas)", cls: "mlw-import-section-title" });

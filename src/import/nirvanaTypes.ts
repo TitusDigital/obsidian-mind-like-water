@@ -50,6 +50,7 @@ export interface ImportOptions {
 	importActiveTasks: boolean;
 	importCompletedTasks: boolean;
 	importActiveProjects: boolean;
+	importSomedayProjects: boolean;
 	selectedAreaTags?: string[];
 }
 
