@@ -1,5 +1,4 @@
-import type { DataStore } from "data/DataStore";
-import { EnergyLevel, type Task } from "data/models";
+import { type Task } from "data/models";
 import { ViewState } from "views/ViewState";
 
 export type ChipState = "off" | "include" | "exclude";
@@ -23,21 +22,19 @@ export class FilterBar {
 
 	constructor(
 		parentEl: HTMLElement,
-		private readonly store: DataStore,
 		private readonly onFilterChange: () => void,
 	) {
 		this.container = parentEl.createDiv("mlw-filter-bar");
-		this.rebuild();
 	}
 
 	/** Get the container element for DOM insertion. */
 	getContainer(): HTMLElement { return this.container; }
 
-	/** Rebuild chip options (e.g. when AOF changes). */
-	rebuild(): void {
+	/** Rebuild chip options scoped to the given tasks. */
+	rebuild(tasks?: Task[]): void {
 		this.container.empty();
-		this.dimensions = this.buildDimensions();
-		this.states.clear();
+		this.dimensions = this.buildDimensions(tasks ?? []);
+		this.pruneStaleStates();
 		this.render();
 	}
 
@@ -47,69 +44,52 @@ export class FilterBar {
 		return tasks.filter(t => this.matchesAll(t));
 	}
 
-	private buildDimensions(): FilterDimension[] {
+	private buildDimensions(tasks: Task[]): FilterDimension[] {
 		const dims: FilterDimension[] = [];
 		const activeAOF = ViewState.getInstance().getActiveAOF();
-		const settings = this.store.getSettings();
 
 		// AOF chips — only when global AOF is "All"
-		if (activeAOF === "" && settings.areasOfFocus.length > 0) {
-			dims.push({
-				label: "Area",
-				key: "aof",
-				values: settings.areasOfFocus.map(a => a.name),
-				getTaskValue: (t) => t.area_of_focus || "",
-			});
+		if (activeAOF === "") {
+			const aofs = this.uniqueSorted(tasks, t => t.area_of_focus || "");
+			if (aofs.length > 0) dims.push({ label: "Area", key: "aof", values: aofs, getTaskValue: (t) => t.area_of_focus || "" });
 		}
 
-		// Project chips — scoped to active AOF
-		const projects = activeAOF !== ""
-			? this.store.getProjectsForAOF(activeAOF)
-			: this.getAllProjects();
-		if (projects.length > 0) {
-			dims.push({
-				label: "Project",
-				key: "project",
-				values: projects,
-				getTaskValue: (t) => t.project ?? "",
-			});
+		// Project chips — derived from tasks in view
+		const projects = this.uniqueSorted(tasks, t => t.project ?? "");
+		if (projects.length > 0) dims.push({ label: "Project", key: "project", values: projects, getTaskValue: (t) => t.project ?? "" });
+
+		// Context chips — derived from tasks in view
+		const contexts = this.uniqueSorted(tasks, t => t.context ?? "");
+		if (contexts.length > 0) dims.push({ label: "Context", key: "context", values: contexts, getTaskValue: (t) => t.context ?? "" });
+
+		// Energy chips — only values present in tasks
+		const energies = this.uniqueSorted(tasks, t => t.energy ?? "");
+		if (energies.length > 0) dims.push({ label: "Energy", key: "energy", values: energies, getTaskValue: (t) => t.energy ?? "" });
+
+		// Starred chip — only if any task is starred
+		if (tasks.some(t => t.starred)) {
+			dims.push({ label: "Starred", key: "starred", values: ["true"], getTaskValue: (t) => String(t.starred) });
 		}
-
-		// Context chips
-		if (settings.contexts.length > 0) {
-			dims.push({
-				label: "Context",
-				key: "context",
-				values: settings.contexts,
-				getTaskValue: (t) => t.context ?? "",
-			});
-		}
-
-		// Energy chips
-		dims.push({
-			label: "Energy",
-			key: "energy",
-			values: [EnergyLevel.Low, EnergyLevel.Medium, EnergyLevel.High],
-			getTaskValue: (t) => t.energy ?? "",
-		});
-
-		// Starred chip
-		dims.push({
-			label: "Starred",
-			key: "starred",
-			values: ["true"],
-			getTaskValue: (t) => String(t.starred),
-		});
 
 		return dims;
 	}
 
-	private getAllProjects(): string[] {
-		const projects = new Set<string>();
-		for (const task of this.store.getAllTasks()) {
-			if (task.project !== null) projects.add(task.project);
+	/** Extract unique non-empty values from tasks, sorted alphabetically. */
+	private uniqueSorted(tasks: Task[], getValue: (t: Task) => string): string[] {
+		const set = new Set<string>();
+		for (const t of tasks) { const v = getValue(t); if (v) set.add(v); }
+		return [...set].sort();
+	}
+
+	/** Remove chip states for values no longer in any dimension. */
+	private pruneStaleStates(): void {
+		const valid = new Set<string>();
+		for (const dim of this.dimensions) {
+			for (const v of dim.values) valid.add(`${dim.key}:${v}`);
 		}
-		return [...projects].sort();
+		for (const key of this.states.keys()) {
+			if (!valid.has(key)) this.states.delete(key);
+		}
 	}
 
 	private render(): void {

@@ -112,11 +112,11 @@ export class UnifiedTaskView extends BaseTaskView {
 			});
 		}
 		if (c.filter) {
-			this.filterBar = new FilterBar(this.controlsEl, this.store, () => void this.renderContent());
+			this.filterBar = new FilterBar(this.controlsEl, () => void this.renderContent());
 		}
 	}
 
-	override refresh(): void { this.filterBar?.rebuild(); super.refresh(); }
+	override refresh(): void { super.refresh(); }
 
 	async renderContent(): Promise<void> {
 		this.listEl.empty();
@@ -160,7 +160,7 @@ export class UnifiedTaskView extends BaseTaskView {
 
 	private async renderNextActions(): Promise<void> {
 		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.NextAction));
-		if (this.filterBar !== null) tasks = this.filterBar.applyFilters(tasks);
+		if (this.filterBar !== null) { this.filterBar.rebuild(tasks); tasks = this.filterBar.applyFilters(tasks); }
 		if (tasks.length === 0 && !this.showCompleted) { this.renderEmpty(); return; }
 		const today = localToday();
 		for (const { name, color, tasks: gt } of this.groupByAOF(tasks)) {
@@ -182,7 +182,7 @@ export class UnifiedTaskView extends BaseTaskView {
 
 	private async renderScheduled(): Promise<void> {
 		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Scheduled));
-		if (this.filterBar !== null) tasks = this.filterBar.applyFilters(tasks);
+		if (this.filterBar !== null) { this.filterBar.rebuild(tasks); tasks = this.filterBar.applyFilters(tasks); }
 		if (tasks.length === 0) { this.renderEmpty(); return; }
 		const buckets = bucketByDate(tasks);
 		for (const label of ["Overdue", "Today", "This Week", "Next Week", "This Month", "Later", "No Date"] as Bucket[]) {
