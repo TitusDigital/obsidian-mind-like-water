@@ -294,10 +294,10 @@
 .mlw-content-header__count { font-size: 12px; color: var(--text-faint); font-family: var(--font-monospace); }
 .mlw-content-header__completed {
 	font-size: 12px; color: var(--text-faint); font-family: var(--font-monospace);
-	cursor: pointer; margin-left: auto; transition: color 0.15s;
+	cursor: pointer; transition: all 0.15s;
 }
-.mlw-content-header__completed:hover { color: var(--text-muted); }
-.mlw-content-header__completed--active { color: var(--interactive-accent); }
+.mlw-content-header__completed:hover { color: var(--text-muted); text-decoration: underline; }
+.mlw-content-header__completed--active { text-decoration: underline; color: var(--text-normal); }
 .mlw-view-group { display: flex; align-items: center; gap: 8px; padding: 10px 16px 4px; }
 .mlw-view-group__dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .mlw-view-group__name { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }

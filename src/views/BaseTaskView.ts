@@ -92,7 +92,7 @@ export abstract class BaseTaskView extends ItemView {
 		header.createEl("span", { text: `${count} task${count !== 1 ? "s" : ""}`, cls: "mlw-content-header__count" });
 		if (completed !== undefined && completed.count > 0) {
 			const cls = `mlw-content-header__completed${completed.active ? " mlw-content-header__completed--active" : ""}`;
-			const btn = header.createEl("span", { text: `${completed.count} completed`, cls });
+			const btn = header.createEl("span", { text: `· ${completed.count} completed`, cls });
 			btn.addEventListener("click", completed.onToggle);
 		}
 	}

@@ -96,19 +96,16 @@ export class UnifiedTaskView extends BaseTaskView {
 
 	override refresh(): void { this.rebuildToolbar(); super.refresh(); }
 
-	private getRecentCompletedCount(): number {
+	private getRecentCompleted(): Task[] {
 		const days = this.store.getSettings().completedVisibilityDays;
 		const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 		return this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Completed))
-			.filter(t => t.completed_date !== null && t.completed_date >= cutoff).length;
+			.filter(t => t.completed_date !== null && t.completed_date >= cutoff)
+			.sort((a, b) => (b.completed_date ?? "").localeCompare(a.completed_date ?? ""));
 	}
 
-	private completedToggle(): { count: number; active: boolean; onToggle: () => void } {
-		return {
-			count: this.getRecentCompletedCount(),
-			active: this.showCompleted,
-			onToggle: () => { this.showCompleted = !this.showCompleted; void this.renderContent(); },
-		};
+	private completedToggle(count: number): { count: number; active: boolean; onToggle: () => void } {
+		return { count, active: this.showCompleted, onToggle: () => { this.showCompleted = !this.showCompleted; void this.renderContent(); } };
 	}
 
 	async renderContent(): Promise<void> {
@@ -127,21 +124,29 @@ export class UnifiedTaskView extends BaseTaskView {
 
 	private async renderFocus(): Promise<void> {
 		const tasks = this.filterByActiveAOF(this.getFocusTasks());
-		if (tasks.length === 0 && !this.showCompleted) { this.renderEmpty(); return; }
-		this.renderContentHeader("Focus", tasks.length, this.completedToggle());
+		const recent = this.getRecentCompleted();
+		const completed = this.showCompleted ? recent : [];
+		if (tasks.length === 0 && completed.length === 0) { this.renderEmpty(); return; }
+		this.renderContentHeader("Focus", tasks.length, this.completedToggle(recent.length));
 		const focusSort = (a: Task, b: Task): number => {
 			if (a.starred !== b.starred) return a.starred ? -1 : 1;
 			return (a.due_date ?? "\uffff").localeCompare(b.due_date ?? "\uffff") || a.sort_order - b.sort_order;
 		};
-		for (const { name, color, tasks: gt } of this.groupTasks(tasks, ViewState.getInstance().getGroupMode())) {
-			if (name !== "") this.renderGroupHeader(name, color, gt.length);
-			gt.sort(focusSort);
-			for (const task of gt) {
+		const allTasks = [...tasks, ...completed];
+		for (const { name, color, tasks: gt } of this.groupTasks(allTasks, ViewState.getInstance().getGroupMode())) {
+			const active = gt.filter(t => t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped);
+			const done = gt.filter(t => t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped);
+			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length);
+			active.sort(focusSort);
+			for (const task of active) {
 				const text = await this.readTaskText(task);
 				this.renderTaskRow(task, text, this.buildFocusBadges(task));
 			}
+			for (const task of done) {
+				const text = await this.readTaskText(task);
+				this.renderCompletedRow(task, text, task.completed_date !== null ? [this.formatDate(task.completed_date)] : []);
+			}
 		}
-		if (this.showCompleted) await this.renderRecentlyCompleted();
 	}
 
 	private async renderInbox(): Promise<void> {
@@ -158,12 +163,17 @@ export class UnifiedTaskView extends BaseTaskView {
 	private async renderNextActions(): Promise<void> {
 		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.NextAction));
 		if (this.filterBar !== null) { this.filterBar.rebuild(tasks); tasks = this.filterBar.applyFilters(tasks); }
-		if (tasks.length === 0 && !this.showCompleted) { this.renderEmpty(); return; }
-		this.renderContentHeader("Next", tasks.length, this.completedToggle());
+		const recent = this.getRecentCompleted();
+		const completed = this.showCompleted ? recent : [];
+		if (tasks.length === 0 && completed.length === 0) { this.renderEmpty(); return; }
+		this.renderContentHeader("Next", tasks.length, this.completedToggle(recent.length));
 		const today = localToday();
-		for (const { name, color, tasks: gt } of this.groupTasks(tasks, ViewState.getInstance().getGroupMode())) {
-			if (name !== "") this.renderGroupHeader(name, color, gt.length);
-			for (const task of gt) {
+		const allTasks = [...tasks, ...completed];
+		for (const { name, color, tasks: gt } of this.groupTasks(allTasks, ViewState.getInstance().getGroupMode())) {
+			const active = gt.filter(t => t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped);
+			const done = gt.filter(t => t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped);
+			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length);
+			for (const task of active) {
 				const text = await this.readTaskText(task);
 				const meta: string[] = [];
 				if (task.due_date !== null && task.due_date <= today) meta.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
@@ -172,8 +182,11 @@ export class UnifiedTaskView extends BaseTaskView {
 				if (task.starred) meta.push("\u2B50");
 				this.renderTaskRow(task, text, meta);
 			}
+			for (const task of done) {
+				const text = await this.readTaskText(task);
+				this.renderCompletedRow(task, text, task.completed_date !== null ? [this.formatDate(task.completed_date)] : []);
+			}
 		}
-		if (this.showCompleted) await this.renderRecentlyCompleted();
 	}
 
 	private async renderScheduled(): Promise<void> {
@@ -224,20 +237,6 @@ export class UnifiedTaskView extends BaseTaskView {
 			if (day !== currentDay) { currentDay = day; this.renderGroupHeader(this.formatDate(day), undefined, dayCounts.get(day)); }
 			const text = await this.readTaskText(task);
 			this.renderCompletedRow(task, text, task.area_of_focus ? [task.area_of_focus] : []);
-		}
-	}
-
-	private async renderRecentlyCompleted(): Promise<void> {
-		const days = this.store.getSettings().completedVisibilityDays;
-		const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-		const completed = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Completed))
-			.filter(t => t.completed_date !== null && t.completed_date >= cutoff)
-			.sort((a, b) => (b.completed_date ?? "").localeCompare(a.completed_date ?? ""));
-		if (completed.length === 0) return;
-		this.renderGroupHeader("Recently Completed", undefined, completed.length);
-		for (const task of completed) {
-			const text = await this.readTaskText(task);
-			this.renderCompletedRow(task, text, task.completed_date !== null ? [this.formatDate(task.completed_date)] : []);
 		}
 	}
 
