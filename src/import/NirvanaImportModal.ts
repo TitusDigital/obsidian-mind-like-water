@@ -1,12 +1,14 @@
 import { type App, Modal, Notice } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import type { NirvanaItem, ImportOptions, ImportSummary } from "./nirvanaTypes";
-import { computeSummary } from "./nirvanaMapper";
+import { computeSummary, discoverTags } from "./nirvanaMapper";
 import { runNirvanaImport } from "./nirvanaImporter";
 
 export class NirvanaImportModal extends Modal {
 	private items: NirvanaItem[] | null = null;
 	private summary: ImportSummary | null = null;
+	private discoveredTags: string[] = [];
+	private selectedTags = new Set<string>();
 	private options: ImportOptions = {
 		importActiveTasks: true,
 		importCompletedTasks: false,
@@ -73,6 +75,8 @@ export class NirvanaImportModal extends Modal {
 
 			this.items = parsed as NirvanaItem[];
 			this.summary = computeSummary(this.items);
+			this.discoveredTags = discoverTags(this.items);
+			this.selectedTags = new Set(this.discoveredTags);
 			this.renderSummary();
 			this.renderOptions();
 			this.importBtn.disabled = false;
@@ -106,6 +110,16 @@ export class NirvanaImportModal extends Modal {
 			this.options.importCompletedTasks, (v) => { this.options.importCompletedTasks = v; });
 		this.addCheckbox(this.optionsEl, `Import active projects (${this.summary!.activeProjects})`,
 			this.options.importActiveProjects, (v) => { this.options.importActiveProjects = v; });
+
+		if (this.discoveredTags.length > 0) {
+			this.optionsEl.createDiv({ text: "Areas of Focus (uncheck contacts/non-areas)", cls: "mlw-import-section-title" });
+			const tagGrid = this.optionsEl.createDiv("mlw-import-tag-grid");
+			for (const tag of this.discoveredTags) {
+				this.addCheckbox(tagGrid, tag, this.selectedTags.has(tag), (v) => {
+					if (v) this.selectedTags.add(tag); else this.selectedTags.delete(tag);
+				});
+			}
+		}
 	}
 
 	private addCheckbox(parent: HTMLElement, label: string, checked: boolean, onChange: (v: boolean) => void): void {
@@ -118,6 +132,7 @@ export class NirvanaImportModal extends Modal {
 
 	private async doImport(): Promise<void> {
 		if (this.items === null) return;
+		this.options.selectedAreaTags = [...this.selectedTags];
 
 		// Disable controls
 		this.importBtn.disabled = true;

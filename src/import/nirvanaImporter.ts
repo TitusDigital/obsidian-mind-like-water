@@ -1,5 +1,6 @@
 import { normalizePath, type App, TFolder } from "obsidian";
 import type { DataStore } from "data/DataStore";
+import { deriveAOFColor } from "data/models";
 import { NirvanaType, NirvanaState, type NirvanaItem, type ImportOptions, type ImportResult, type ImportProgress } from "./nirvanaTypes";
 import { mapTags, extractOutcome, mapTimestamp, prepareTask } from "./nirvanaMapper";
 
@@ -27,6 +28,20 @@ export async function runNirvanaImport(
 	const settings = store.getSettings();
 	const aofNames = settings.areasOfFocus.map(a => a.name);
 	const projectFolder = normalizePath(settings.projectFolder);
+
+	// ── Phase 0: Create AOFs from user-selected area tags ────────
+	const existingAOFs = new Set(aofNames.map(n => n.toLowerCase()));
+	const newAOFs = (options.selectedAreaTags ?? []).filter(t => !existingAOFs.has(t.toLowerCase()));
+	if (newAOFs.length > 0) {
+		const defaultColors = ["#6CB6FF", "#C5A3E6", "#7FCA8F", "#E6A86C", "#E66C8F", "#8FC5E6", "#C5E68F", "#E6C56C", "#6CE6C5", "#B88FE6"];
+		const updatedAOFs = [...settings.areasOfFocus];
+		for (let i = 0; i < newAOFs.length; i++) {
+			const colorHex = defaultColors[i % defaultColors.length]!;
+			updatedAOFs.push({ name: newAOFs[i]!, sort_order: updatedAOFs.length, color: deriveAOFColor(colorHex) });
+		}
+		store.updateSettings({ areasOfFocus: updatedAOFs });
+		aofNames.push(...newAOFs);
+	}
 
 	// ── Phase 1: Create project files ────────────────────────────
 	const projectMap = new Map<string, ProjectInfo>();
@@ -64,8 +79,9 @@ export async function runNirvanaImport(
 	const taskItems = items.filter(i => {
 		if (i.type !== NirvanaType.Task) return false;
 		if (i.state === NirvanaState.RecurringTemplate || i.state === NirvanaState.Reference) return false;
-		if (i.state === NirvanaState.Completed && !options.importCompletedTasks) return false;
-		if (i.state !== NirvanaState.Completed && !options.importActiveTasks) return false;
+		const isCompleted = i.state === NirvanaState.Completed || i.completed > 0;
+		if (isCompleted && !options.importCompletedTasks) return false;
+		if (!isCompleted && !options.importActiveTasks) return false;
 		return true;
 	});
 
@@ -80,7 +96,7 @@ export async function runNirvanaImport(
 			const group = projectTasks.get(proj.nirvanaId) ?? [];
 			group.push({ item, idx: group.length });
 			projectTasks.set(proj.nirvanaId, group);
-		} else if (item.state === NirvanaState.Completed) {
+		} else if (item.state === NirvanaState.Completed || item.completed > 0) {
 			standaloneCompleted.push(item);
 		} else {
 			standaloneActive.push(item);
@@ -255,24 +271,14 @@ async function appendToProjectFile(
 }
 
 function groupByStatus(items: NirvanaItem[]): { header: string; items: NirvanaItem[] }[] {
+	const map: Record<number, string> = { 0: "Inbox", 1: "Next Actions", 2: "Next Actions", 3: "Scheduled", 4: "Someday / Maybe", 5: "Someday / Maybe", 6: "Next Actions" };
 	const buckets = new Map<string, NirvanaItem[]>();
-	const order = ["Inbox", "Next Actions", "Scheduled", "Someday / Maybe", "Dropped"];
-	const stateToHeader: Record<number, string> = {
-		0: "Inbox", 1: "Next Actions", 2: "Next Actions",
-		3: "Scheduled", 4: "Someday / Maybe", 5: "Someday / Maybe",
-		6: "Next Actions",
-	};
-
 	for (const item of items) {
-		const header = stateToHeader[item.state] ?? "Other";
-		const list = buckets.get(header) ?? [];
-		list.push(item);
-		buckets.set(header, list);
+		const h = map[item.state] ?? "Other";
+		(buckets.get(h) ?? (buckets.set(h, []), buckets.get(h)!)).push(item);
 	}
-
-	return order
-		.filter(h => buckets.has(h))
-		.map(h => ({ header: h, items: buckets.get(h)! }));
+	return ["Inbox", "Next Actions", "Scheduled", "Someday / Maybe", "Dropped"]
+		.filter(h => buckets.has(h)).map(h => ({ header: h, items: buckets.get(h)! }));
 }
 
 function yieldToUI(): Promise<void> {

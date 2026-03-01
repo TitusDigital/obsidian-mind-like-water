@@ -468,6 +468,8 @@
 .mlw-import-result { margin-bottom: 12px; font-size: 13px; line-height: 1.6; }
 .mlw-import-result__title { font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--text-success, #28a745); }
 .mlw-import-result__error { color: var(--text-error); font-size: 12px; }
+.mlw-import-tag-grid { display: flex; flex-wrap: wrap; gap: 2px 12px; margin-top: 4px; }
+.mlw-import-tag-grid .mlw-import-option { flex: 0 0 auto; }
 
 /* ── Codeblock Embeds ────────────────────────────────── */
 .mlw-embed { padding: 4px 0; }

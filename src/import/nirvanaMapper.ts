@@ -3,7 +3,8 @@ import { NirvanaType, NirvanaState, type NirvanaItem, type ImportSummary, type P
 
 /** Map Nirvana state to MLW status + starred flag. Returns null for items to skip. */
 export function mapState(item: NirvanaItem): { status: TaskStatus; starred: boolean } | null {
-	if (item.state === NirvanaState.Completed) {
+	// completed timestamp is the ground truth — state field can be stale
+	if (item.state === NirvanaState.Completed || item.completed > 0) {
 		return item.cancelled === 1
 			? { status: TaskStatus.Dropped, starred: false }
 			: { status: TaskStatus.Completed, starred: false };
@@ -90,7 +91,7 @@ export function computeSummary(items: NirvanaItem[]): ImportSummary {
 		if (item.type === NirvanaType.Project && (item.state === NirvanaState.Someday || item.state === NirvanaState.Later)) {
 			somedayProjects++; continue;
 		}
-		if (item.state === NirvanaState.Completed) {
+		if (item.state === NirvanaState.Completed || item.completed > 0) {
 			if (item.cancelled === 1) cancelledTasks++; else completedTasks++;
 			continue;
 		}
@@ -98,6 +99,24 @@ export function computeSummary(items: NirvanaItem[]): ImportSummary {
 	}
 
 	return { totalItems: items.length, activeTasks, completedTasks, cancelledTasks, activeProjects, somedayProjects, recurringTemplates, referenceItems };
+}
+
+/** Discover all unique non-@ tags across importable items (for user to select which are AOFs). */
+export function discoverTags(items: NirvanaItem[]): string[] {
+	const seen = new Set<string>();
+	const tags: string[] = [];
+	for (const item of items) {
+		if (item.type === NirvanaType.ReferenceItem || item.type === NirvanaType.ReferenceList) continue;
+		if (item.completed > 0 || item.state === NirvanaState.Completed) continue;
+		for (const t of item.tags.split(",")) {
+			const trimmed = t.trim();
+			if (trimmed && !trimmed.startsWith("@") && !seen.has(trimmed.toLowerCase())) {
+				seen.add(trimmed.toLowerCase());
+				tags.push(trimmed);
+			}
+		}
+	}
+	return tags.sort((a, b) => a.localeCompare(b));
 }
 
 /** Prepare a Nirvana task item for import: build text, note lines, and MLW field values. */
