@@ -126,17 +126,19 @@ export class FilterBar {
 					text: label,
 					cls: `mlw-filter-chip mlw-filter-chip--${state}`,
 				});
-				chip.addEventListener("click", () => this.cycleChip(chipKey, chip));
+				chip.addEventListener("click", (e) => this.cycleChip(chipKey, chip, e));
 			}
 		}
 	}
 
-	private cycleChip(key: string, chip: HTMLSpanElement): void {
+	private cycleChip(key: string, chip: HTMLSpanElement, e: MouseEvent): void {
 		const current = this.states.get(key) ?? "off";
 		let next: ChipState;
-		if (current === "off") next = "include";
-		else if (current === "include") next = "exclude";
-		else next = "off";
+		if (e.shiftKey) {
+			next = current === "exclude" ? "off" : "exclude";
+		} else {
+			next = current === "include" ? "off" : "include";
+		}
 
 		if (next === "off") {
 			this.states.delete(key);
