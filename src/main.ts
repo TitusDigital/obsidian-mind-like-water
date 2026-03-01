@@ -10,7 +10,7 @@ import { UnifiedTaskView } from "views/UnifiedTaskView";
 import { VIEW_TYPE_MLW_UNIFIED, UNIFIED_ICON } from "views/ViewConstants";
 import { StatusBarWidget } from "widgets/StatusBarWidget";
 import { runScheduler } from "services/SchedulerService";
-import { registerFocusBlock, registerCompletedBlock } from "codeblocks/registerCodeblocks";
+import { registerFocusBlock, registerCompletedBlock, registerProjectTasksBlock } from "codeblocks/registerCodeblocks";
 
 export default class MindLikeWaterPlugin extends Plugin {
 	store!: DataStore;
@@ -69,6 +69,7 @@ export default class MindLikeWaterPlugin extends Plugin {
 		// ── Codeblock Processors ─────────────────────────────
 		registerFocusBlock(this, this.store);
 		registerCompletedBlock(this, this.store);
+		registerProjectTasksBlock(this, this.store);
 
 		// ── Checkbox Watcher ──────────────────────────────────
 		registerCheckboxWatcher(this, this.store);

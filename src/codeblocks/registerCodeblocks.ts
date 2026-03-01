@@ -1,4 +1,5 @@
-import type { Plugin } from "obsidian";
+import { type Plugin, TFile } from "obsidian";
+import type { App } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import { TaskStatus } from "data/models";
 import { EmbedRenderer, type EmbedItem } from "codeblocks/EmbedRenderer";
@@ -43,6 +44,47 @@ export function registerCompletedBlock(plugin: Plugin, store: DataStore): void {
 		renderer.start();
 		ctx.addChild(renderer);
 	});
+}
+
+/** Register the mlw-project-tasks codeblock processor. */
+export function registerProjectTasksBlock(plugin: Plugin, store: DataStore): void {
+	plugin.registerMarkdownCodeBlockProcessor("mlw-project-tasks", (_source, el, ctx) => {
+		const title = getProjectTitle(plugin.app, ctx.sourcePath);
+		const renderer = new EmbedRenderer(
+			el, plugin.app, store,
+			() => buildProjectItems(store, title),
+			"No tasks assigned to this project.",
+		);
+		renderer.start();
+		ctx.addChild(renderer);
+	});
+}
+
+function getProjectTitle(app: App, sourcePath: string): string {
+	const file = app.vault.getAbstractFileByPath(sourcePath);
+	if (!(file instanceof TFile)) return "";
+	const cache = app.metadataCache.getFileCache(file);
+	return String(cache?.frontmatter?.title ?? file.basename);
+}
+
+function buildProjectItems(store: DataStore, projectTitle: string): EmbedItem[] {
+	if (projectTitle === "") return [];
+	const tasks = store.getAllTasks().filter(t => t.project === projectTitle);
+	const active: EmbedItem[] = [];
+	const completed: EmbedItem[] = [];
+	for (const task of tasks) {
+		if (task.status === TaskStatus.Completed || task.status === TaskStatus.Dropped) {
+			completed.push({ task, badges: [] });
+		} else {
+			const badges: string[] = [];
+			if (task.due_date !== null) badges.push(task.due_date);
+			if (task.status !== TaskStatus.NextAction) badges.push(task.status);
+			active.push({ task, badges });
+		}
+	}
+	active.sort((a, b) => a.task.sort_order - b.task.sort_order);
+	completed.sort((a, b) => (b.task.completed_date ?? "").localeCompare(a.task.completed_date ?? ""));
+	return [...active, ...completed];
 }
 
 function buildFocusItems(store: DataStore): EmbedItem[] {

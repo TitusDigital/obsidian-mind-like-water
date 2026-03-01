@@ -265,6 +265,11 @@ export class DataStore {
 			"",
 			outcome,
 			"",
+			"## Tasks",
+			"",
+			"```mlw-project-tasks",
+			"```",
+			"",
 			"## Notes",
 			"",
 		].join("\n");
