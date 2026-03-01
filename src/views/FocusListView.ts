@@ -4,6 +4,12 @@ import { TaskStatus, type Task } from "data/models";
 import { VIEW_TYPE_MLW_FOCUS, FOCUS_ICON } from "views/ViewConstants";
 import { BaseTaskView, type ViewConfig } from "views/BaseTaskView";
 
+/** Local YYYY-MM-DD (avoids UTC date drift from toISOString). */
+function localToday(): string {
+	const d = new Date();
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export class FocusListView extends BaseTaskView {
 	constructor(leaf: WorkspaceLeaf, store: DataStore) {
 		super(leaf, store);
@@ -47,7 +53,7 @@ export class FocusListView extends BaseTaskView {
 	}
 
 	private getFocusTasks(): Task[] {
-		const today = new Date().toISOString().slice(0, 10);
+		const today = localToday();
 		return this.store.getAllTasks().filter(t => {
 			if (t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped) return false;
 			if (t.starred) return true;
@@ -58,7 +64,7 @@ export class FocusListView extends BaseTaskView {
 	}
 
 	private buildFocusBadges(task: Task): string[] {
-		const today = new Date().toISOString().slice(0, 10);
+		const today = localToday();
 		const badges: string[] = [];
 		if (task.starred) badges.push("\u2B50 Starred");
 		if (task.due_date !== null && task.due_date <= today) {

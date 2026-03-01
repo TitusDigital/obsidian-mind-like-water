@@ -8,7 +8,8 @@ import { TaskStatus } from "data/models";
 export function runScheduler(store: DataStore): number {
 	if (!store.getSettings().autoTransitionScheduled) return 0;
 
-	const today = new Date().toISOString().slice(0, 10);
+	const d = new Date();
+	const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 	const scheduled = store.getTasksByStatus(TaskStatus.Scheduled);
 	let count = 0;
 
