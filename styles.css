@@ -352,11 +352,16 @@
 }
 .theme-light .mlw-editor-popover { box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15); }
 
-/* ── Unified Tab Bar ─────────────────────────────────── */
-.mlw-tab-bar-label {
-	font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
-	color: var(--text-faint); padding: 8px 8px 2px; font-family: var(--font-interface);
+/* ── App Header (AOF + stats) ───────────────────────── */
+.mlw-app-header {
+	display: flex; align-items: center; gap: 8px;
+	padding: 8px 12px 4px; font-family: var(--font-interface);
 }
+.mlw-app-header__stats {
+	font-size: 11px; color: var(--text-muted); margin-left: auto;
+}
+
+/* ── Unified Tab Bar ─────────────────────────────────── */
 .mlw-tab-bar {
 	display: flex; gap: 0; border-bottom: 1px solid var(--background-modifier-border);
 	container-type: inline-size;

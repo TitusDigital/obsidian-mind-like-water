@@ -1,6 +1,7 @@
 import { type WorkspaceLeaf, setIcon } from "obsidian";
 import type { DataStore } from "data/DataStore";
-import { TaskStatus, type Task } from "data/models";
+import { TaskStatus, ProjectStatus, type Task } from "data/models";
+import { readAllProjects } from "data/ProjectReader";
 import { VIEW_TYPE_MLW_UNIFIED } from "views/ViewConstants";
 import { BaseTaskView, type ViewConfig } from "views/BaseTaskView";
 import { FilterBar } from "views/FilterBar";
@@ -18,21 +19,22 @@ function localToday(): string {
 type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects" | "review";
 const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects", "review"];
 
-const TAB_CFG: Record<TabId, { label: string; icon: string; aof: boolean; filter: boolean; toggle: boolean; empty: string; hint: string }> = {
-	focus: { label: "Focus", icon: "star", aof: true, filter: false, toggle: true, empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
-	inbox: { label: "Inbox", icon: "inbox", aof: false, filter: false, toggle: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
-	next: { label: "Next", icon: "zap", aof: true, filter: true, toggle: true, empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
-	scheduled: { label: "Scheduled", icon: "calendar", aof: true, filter: true, toggle: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
-	someday: { label: "Someday", icon: "coffee", aof: true, filter: false, toggle: false, empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
-	completed: { label: "Completed", icon: "check-circle", aof: true, filter: false, toggle: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
-	projects: { label: "Projects", icon: "folder", aof: true, filter: false, toggle: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
-	review: { label: "Review", icon: "clipboard-check", aof: false, filter: false, toggle: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
+const TAB_CFG: Record<TabId, { label: string; icon: string; filter: boolean; toggle: boolean; empty: string; hint: string }> = {
+	focus: { label: "Focus", icon: "star", filter: false, toggle: true, empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
+	inbox: { label: "Inbox", icon: "inbox", filter: false, toggle: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
+	next: { label: "Next", icon: "zap", filter: true, toggle: true, empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
+	scheduled: { label: "Scheduled", icon: "calendar", filter: true, toggle: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
+	someday: { label: "Someday", icon: "coffee", filter: false, toggle: false, empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
+	completed: { label: "Completed", icon: "check-circle", filter: false, toggle: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
+	projects: { label: "Projects", icon: "folder", filter: false, toggle: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
+	review: { label: "Review", icon: "clipboard-check", filter: false, toggle: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
 };
 
 export class UnifiedTaskView extends BaseTaskView {
 	private activeTab: TabId = "focus";
 	private showCompleted = false;
 	private filterBar: FilterBar | null = null;
+	private appHeaderEl!: HTMLElement;
 	private controlsEl!: HTMLElement;
 	private tabBtns = new Map<TabId, HTMLElement>();
 	private integrityReport: IntegrityReport | null = null;
@@ -45,12 +47,12 @@ export class UnifiedTaskView extends BaseTaskView {
 
 	getViewConfig(): ViewConfig {
 		const c = TAB_CFG[this.activeTab];
-		return { title: c.label, emptyText: c.empty, emptyHint: c.hint, showAOFSelector: c.aof };
+		return { title: c.label, emptyText: c.empty, emptyHint: c.hint, showAOFSelector: false };
 	}
 
 	protected override buildLayout(): void {
 		const { contentEl } = this;
-		contentEl.createDiv({ text: "Action Lists", cls: "mlw-tab-bar-label" });
+		this.appHeaderEl = contentEl.createDiv("mlw-app-header");
 		const tabBar = contentEl.createDiv("mlw-tab-bar");
 		for (const id of TAB_ORDER) {
 			const cfg = TAB_CFG[id];
@@ -66,8 +68,10 @@ export class UnifiedTaskView extends BaseTaskView {
 		}
 		this.controlsEl = contentEl.createDiv("mlw-view-controls");
 		this.listEl = contentEl.createDiv("mlw-view-list");
+		this.rebuildAppHeader();
 		this.rebuildControls();
 		this.unsubscribeViewState = ViewState.getInstance().subscribe(() => {
+			this.rebuildAppHeader();
 			this.rebuildControls();
 			this.refresh();
 		});
@@ -85,19 +89,33 @@ export class UnifiedTaskView extends BaseTaskView {
 		void this.renderContent();
 	}
 
+	private rebuildAppHeader(): void {
+		this.appHeaderEl.empty();
+		const sel = this.appHeaderEl.createEl("select", { cls: "mlw-aof-selector" });
+		sel.createEl("option", { text: "All Areas", value: "" }).value = "";
+		for (const aof of this.store.getSettings().areasOfFocus) {
+			sel.createEl("option", { text: aof.name, value: aof.name }).value = aof.name;
+		}
+		sel.value = ViewState.getInstance().getActiveAOF();
+		sel.addEventListener("change", () => ViewState.getInstance().setActiveAOF(sel.value));
+
+		const aof = ViewState.getInstance().getActiveAOF();
+		const allTasks = this.store.getAllTasks();
+		const activeTasks = allTasks.filter(t => {
+			if (t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped) return false;
+			return aof === "" || t.area_of_focus === aof;
+		});
+		const projects = readAllProjects(this.app, this.store.getSettings().projectFolder)
+			.filter(p => p.status === ProjectStatus.Active && (aof === "" || p.area_of_focus === aof));
+		this.appHeaderEl.createSpan({
+			text: `${activeTasks.length} tasks \u00B7 ${projects.length} projects`,
+			cls: "mlw-app-header__stats",
+		});
+	}
+
 	private rebuildControls(): void {
 		this.controlsEl.empty();
 		const c = TAB_CFG[this.activeTab];
-		if (c.aof) {
-			this.controlsEl.createSpan({ text: "AOF:", cls: "mlw-aof-label" });
-			const sel = this.controlsEl.createEl("select", { cls: "mlw-aof-selector" });
-			sel.createEl("option", { text: "All", value: "" }).value = "";
-			for (const aof of this.store.getSettings().areasOfFocus) {
-				sel.createEl("option", { text: aof.name, value: aof.name }).value = aof.name;
-			}
-			sel.value = ViewState.getInstance().getActiveAOF();
-			sel.addEventListener("change", () => ViewState.getInstance().setActiveAOF(sel.value));
-		}
 		if (c.toggle) {
 			const btn = this.controlsEl.createEl("button", {
 				cls: "mlw-view-header__toggle", attr: { "aria-label": "Show completed" },
@@ -116,7 +134,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		}
 	}
 
-	override refresh(): void { super.refresh(); }
+	override refresh(): void { this.rebuildAppHeader(); super.refresh(); }
 
 	async renderContent(): Promise<void> {
 		this.listEl.empty();
