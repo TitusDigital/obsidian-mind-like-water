@@ -1,4 +1,5 @@
 import type { DataStore } from "data/DataStore";
+import { TaskStatus } from "data/models";
 import { ViewState, type GroupMode } from "views/ViewState";
 
 const GROUP_LABELS: [GroupMode, string][] = [["aof", "Area"], ["project", "Project"], ["context", "Context"], ["none", "Flat"]];
@@ -32,10 +33,14 @@ export function buildToolbar(el: HTMLElement, cfg: ToolbarConfig, tabBtns: Map<s
 
 	// Tab pills
 	const tabsEl = el.createDiv("mlw-toolbar__tabs");
+	const inboxCount = cfg.store.getTasksByStatus(TaskStatus.Inbox).length;
 	for (const [id, label] of cfg.tabLabels) {
 		const btn = tabsEl.createEl("button", {
 			text: label, cls: `mlw-tab-pill${id === cfg.activeTab ? " mlw-tab-pill--active" : ""}`,
 		});
+		if (id === "inbox" && inboxCount > 0) {
+			btn.createSpan({ text: String(inboxCount), cls: "mlw-tab-pill__badge" });
+		}
 		btn.addEventListener("click", () => cfg.onSwitchTab(id));
 		tabBtns.set(id, btn);
 	}

@@ -275,8 +275,8 @@
 .mlw-filter-bar:empty { display: none; }
 .mlw-filter-bar__sep { width: 1px; height: 16px; background: var(--background-modifier-border); margin: 0 2px; }
 .mlw-filter-chip {
-	display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 10px;
-	font-size: 11px; font-family: var(--font-interface); cursor: pointer;
+	display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 4px;
+	font-size: 11px; font-family: var(--font-monospace); cursor: pointer;
 	transition: all 0.15s ease; border: 1px solid transparent; user-select: none;
 }
 .mlw-filter-chip--off {
@@ -419,6 +419,12 @@
 .mlw-tab-pill:hover { color: var(--text-muted); }
 .mlw-tab-pill--active {
 	background: var(--background-secondary-alt); color: var(--text-normal); font-weight: 600;
+}
+.mlw-tab-pill__badge {
+	display: inline-flex; align-items: center; justify-content: center;
+	min-width: 14px; height: 14px; padding: 0 3px; margin-left: 4px;
+	border-radius: 7px; font-size: 10px; font-weight: 600;
+	background: var(--interactive-accent); color: var(--text-on-accent);
 }
 
 /* Group Pills (in toolbar) */
