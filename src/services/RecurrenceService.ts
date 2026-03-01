@@ -4,7 +4,6 @@ import type { DataStore } from "data/DataStore";
 import { TaskStatus, type Task } from "data/models";
 
 const MLW_COMMENT_RE = /<!-- mlw:[a-z0-9]{6} -->/;
-const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MAX_SPAWN_PER_RUN = 50;
 
 function localToday(): string {
@@ -29,22 +28,15 @@ function parseRRule(ruleStr: string): RRule {
 }
 
 function hasReachedEndCondition(store: DataStore, template: Task, nextDate?: Date): boolean {
-	const rule = parseRRule(template.recurrence_rule!);
-	const opts = rule.origOptions;
-	if (opts.count !== undefined && opts.count !== null && template.recurrence_spawn_count >= opts.count) {
-		return true;
-	}
-	if (opts.until !== undefined && opts.until !== null && nextDate !== undefined) {
-		if (nextDate > opts.until) return true;
-	}
+	const opts = parseRRule(template.recurrence_rule!).origOptions;
+	if (opts.count != null && template.recurrence_spawn_count >= opts.count) return true;
+	if (opts.until != null && nextDate !== undefined && nextDate > opts.until) return true;
 	return false;
 }
 
 function incrementSpawnCount(store: DataStore, templateId: string): void {
-	const template = store.getTask(templateId);
-	if (template !== undefined) {
-		store.updateTask(templateId, { recurrence_spawn_count: template.recurrence_spawn_count + 1 });
-	}
+	const tmpl = store.getTask(templateId);
+	if (tmpl !== undefined) store.updateTask(templateId, { recurrence_spawn_count: tmpl.recurrence_spawn_count + 1 });
 }
 
 // ── Markdown Sync ────────────────────────────────────────────────
@@ -52,32 +44,21 @@ function incrementSpawnCount(store: DataStore, templateId: string): void {
 async function appendCheckboxToFile(
 	store: DataStore, sourceFile: string, taskText: string, newId: string,
 ): Promise<number> {
-	const app = store.app;
-	const file = app.vault.getAbstractFileByPath(sourceFile);
-	if (!(file instanceof TFile)) {
-		console.warn(`MLW: Source file not found for recurring spawn: ${sourceFile}`);
-		return -1;
-	}
-
-	const content = await app.vault.read(file);
+	const file = store.app.vault.getAbstractFileByPath(sourceFile);
+	if (!(file instanceof TFile)) { console.warn(`MLW: Source file not found: ${sourceFile}`); return -1; }
+	const content = await store.app.vault.read(file);
 	const lines = content.split("\n");
-
-	// Find the last line containing an mlw comment to keep recurring tasks grouped
+	// Find last mlw comment line to group recurring tasks together
 	let insertAfter = -1;
 	for (let i = lines.length - 1; i >= 0; i--) {
 		if (MLW_COMMENT_RE.test(lines[i]!)) { insertAfter = i; break; }
 	}
 	if (insertAfter === -1) insertAfter = lines.length - 1;
-
-	const newLine = `- [ ] ${taskText} <!-- mlw:${newId} -->`;
 	const insertAt = insertAfter + 1;
-	lines.splice(insertAt, 0, newLine);
-
-	// Update source_line for tasks below the insertion point in the same file
-	updateLineNumbersAfterInsert(store, sourceFile, insertAt + 1); // +1 because source_line is 1-based
-
-	await app.vault.modify(file, lines.join("\n"));
-	return insertAt + 1; // 1-based line number
+	lines.splice(insertAt, 0, `- [ ] ${taskText} <!-- mlw:${newId} -->`);
+	updateLineNumbersAfterInsert(store, sourceFile, insertAt + 1);
+	await store.app.vault.modify(file, lines.join("\n"));
+	return insertAt + 1;
 }
 
 function updateLineNumbersAfterInsert(store: DataStore, filePath: string, insertedLine1Based: number): void {
@@ -130,11 +111,8 @@ async function spawnInstance(
 		cached_text: sourceTask.cached_text,
 	});
 
-	const templateId = sourceTask.recurrence_template_id ?? sourceTask.id;
-	incrementSpawnCount(store, templateId);
-
-	const dateStr = formatLocalDate(newStartDate);
-	new Notice(`Next instance created: ${taskText} — starts ${dateStr}`);
+	incrementSpawnCount(store, sourceTask.recurrence_template_id ?? sourceTask.id);
+	new Notice(`Next instance created: ${taskText} — starts ${formatLocalDate(newStartDate)}`);
 
 	return newTask;
 }
@@ -248,6 +226,61 @@ function getActiveFixedTemplates(store: DataStore): Task[] {
 		t.recurrence_template_id === t.id &&
 		!t.recurrence_suspended,
 	);
+}
+
+// ── Pause / Resume ───────────────────────────────────────────────
+
+/** Pause recurrence on a single task. */
+export function pauseTask(store: DataStore, taskId: string): void {
+	store.updateTask(taskId, { recurrence_suspended: true });
+}
+
+/** Resume recurrence on a single task. For fixed: spawns next upcoming instance via skip-to-today. */
+export async function resumeTask(store: DataStore, taskId: string): Promise<void> {
+	const task = store.getTask(taskId);
+	if (task === undefined) return;
+	store.updateTask(taskId, { recurrence_suspended: false });
+	if (task.recurrence_type === "fixed") {
+		await resumeFixedForTemplate(store, task.recurrence_template_id ?? task.id);
+	}
+}
+
+/** Pause all recurring tasks globally. */
+export function pauseAllRecurrence(store: DataStore): void {
+	store.updateSettings({ recurrenceGloballyPaused: true, recurrencePausedAt: new Date().toISOString() });
+	for (const t of store.getAllTasks()) {
+		if (t.recurrence_rule !== null && !t.recurrence_suspended) store.updateTask(t.id, { recurrence_suspended: true });
+	}
+}
+
+/** Resume all recurring tasks globally. Runs skip-to-today for fixed schedules. */
+export async function resumeAllRecurrence(store: DataStore): Promise<void> {
+	store.updateSettings({ recurrenceGloballyPaused: false, recurrencePausedAt: null });
+	for (const t of store.getAllTasks()) {
+		if (t.recurrence_rule !== null && t.recurrence_suspended) store.updateTask(t.id, { recurrence_suspended: false });
+	}
+	// Skip-to-today: spawn next occurrence on/after today (NOT catch-up)
+	const templates = getActiveFixedTemplates(store);
+	let totalSpawned = 0;
+	for (const tmpl of templates) {
+		if (totalSpawned >= MAX_SPAWN_PER_RUN) break;
+		totalSpawned += await resumeFixedForTemplate(store, tmpl.id);
+	}
+}
+
+async function resumeFixedForTemplate(store: DataStore, templateId: string): Promise<number> {
+	const template = store.getTask(templateId);
+	if (template === undefined || template.recurrence_rule === null) return 0;
+	if (template.recurrence_suspended || hasReachedEndCondition(store, template)) return 0;
+	const today = parseLocalDate(localToday());
+	const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+	const nextDate = parseRRule(template.recurrence_rule).after(yesterday, true);
+	if (nextDate === null) return 0;
+	const allInstances = store.getTasksByTemplateId(templateId);
+	if (allInstances.some(t => t.start_date === formatLocalDate(nextDate))) return 0;
+	const latest = allInstances.reduce((a, b) => ((a.start_date ?? "") > (b.start_date ?? "") ? a : b), allInstances[0]!);
+	await spawnInstance(store, latest, nextDate);
+	return 1;
 }
 
 // ── Human-Readable Summary ───────────────────────────────────────

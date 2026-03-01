@@ -1,4 +1,4 @@
-import { Plugin, normalizePath, Platform, TFile } from "obsidian";
+import { Plugin, normalizePath, Platform, TFile, Notice } from "obsidian";
 import { DataStore } from "data/DataStore";
 import { TaskStatus, nextChipDisplayMode } from "data/models";
 import { MLWSettingTab } from "settings/MLWSettings";
@@ -10,7 +10,7 @@ import { UnifiedTaskView } from "views/UnifiedTaskView";
 import { VIEW_TYPE_MLW_UNIFIED, UNIFIED_ICON } from "views/ViewConstants";
 import { StatusBarWidget } from "widgets/StatusBarWidget";
 import { runScheduler } from "services/SchedulerService";
-import { onPluginLoad as runRecurrenceCheck } from "services/RecurrenceService";
+import { onPluginLoad as runRecurrenceCheck, pauseAllRecurrence, resumeAllRecurrence } from "services/RecurrenceService";
 import { runIntegrityCheck } from "services/IntegrityChecker";
 import { registerFocusBlock, registerCompletedBlock, registerProjectTasksBlock } from "codeblocks/registerCodeblocks";
 import { NirvanaImportModal } from "import/NirvanaImportModal";
@@ -19,6 +19,7 @@ export default class MindLikeWaterPlugin extends Plugin {
 	store!: DataStore;
 	private statusBarWidget: StatusBarWidget | null = null;
 	private ribbonBadgeEl!: HTMLSpanElement;
+	private pauseIndicator: HTMLElement | null = null;
 
 	async onload(): Promise<void> {
 		console.log("Loading Mind Like Water plugin");
@@ -70,6 +71,29 @@ export default class MindLikeWaterPlugin extends Plugin {
 			},
 		});
 
+		this.addCommand({
+			id: "pause-all-recurrence",
+			name: "Pause all recurring tasks",
+			callback: () => {
+				const count = this.store.getAllTasks().filter(t => t.recurrence_rule !== null && !t.recurrence_suspended).length;
+				if (count === 0) { new Notice("No active recurring tasks to pause."); return; }
+				pauseAllRecurrence(this.store);
+				new Notice(`Paused ${count} recurring task(s).`);
+			},
+		});
+
+		this.addCommand({
+			id: "resume-all-recurrence",
+			name: "Resume all recurring tasks",
+			callback: () => {
+				const count = this.store.getAllTasks().filter(t => t.recurrence_rule !== null && t.recurrence_suspended).length;
+				if (count === 0) { new Notice("No paused recurring tasks to resume."); return; }
+				void resumeAllRecurrence(this.store).then(() => {
+					new Notice(`Resumed ${count} recurring task(s).`);
+				});
+			},
+		});
+
 		// ── View ──────────────────────────────────────────────
 		this.registerView(VIEW_TYPE_MLW_UNIFIED, (leaf) => new UnifiedTaskView(leaf, this.store));
 
@@ -83,6 +107,9 @@ export default class MindLikeWaterPlugin extends Plugin {
 		// ── Status Bar (desktop only) ─────────────────────────
 		if (Platform.isDesktop) {
 			this.statusBarWidget = new StatusBarWidget(this.addStatusBarItem(), this.store);
+			this.pauseIndicator = this.addStatusBarItem();
+			this.pauseIndicator.addClass("mlw-pause-indicator");
+			this.updatePauseIndicator();
 		}
 
 		// ── Codeblock Processors ─────────────────────────────
@@ -172,8 +199,16 @@ export default class MindLikeWaterPlugin extends Plugin {
 		}
 	}
 
+	private updatePauseIndicator(): void {
+		if (this.pauseIndicator === null) return;
+		const paused = this.store.getSettings().recurrenceGloballyPaused;
+		this.pauseIndicator.textContent = paused ? "\u23F8 Recurrence paused" : "";
+		this.pauseIndicator.style.display = paused ? "" : "none";
+	}
+
 	private onTasksChanged(): void {
 		this.statusBarWidget?.update();
+		this.updatePauseIndicator();
 
 		const count = this.store.getTaskCountByStatus(TaskStatus.Inbox);
 		if (count > 0) {
