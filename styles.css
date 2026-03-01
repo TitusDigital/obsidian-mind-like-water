@@ -307,24 +307,29 @@
 .mlw-view-group__count { font-size: 11px; color: var(--text-faint); font-family: var(--font-monospace); flex-shrink: 0; }
 .mlw-view-item {
 	display: flex; align-items: center; gap: 8px;
-	padding: 8px 16px;
-	border-bottom: 1px solid var(--background-modifier-border);
+	padding: 6px 16px; margin: 1px 0; border-radius: 6px;
 	cursor: pointer; transition: background 0.1s ease;
 }
 .mlw-view-item:hover { background: var(--background-modifier-hover); }
+.mlw-view-item--starred .mlw-view-item__text { font-weight: 500; }
 .mlw-view-item__text { flex: 1; font-size: 13px; color: var(--text-normal); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mlw-view-item__meta { display: flex; gap: 8px; font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+.mlw-view-item__meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; white-space: nowrap; }
 .mlw-view-item__star {
-	flex-shrink: 0; cursor: pointer; font-size: 14px; line-height: 1;
-	color: var(--text-faint); transition: color 0.15s ease;
+	flex-shrink: 0; cursor: pointer; font-size: 12px; line-height: 1;
+	color: var(--text-faint); opacity: 0.3; transition: opacity 0.15s ease, color 0.15s ease;
 }
-.mlw-view-item__star:hover { color: #E8AE5C; }
-.mlw-view-item__star--active { color: #E8AE5C; }
+.mlw-view-item__star:hover { color: #E8AE5C; opacity: 1; }
+.mlw-view-item__star--active { color: #E8AE5C; opacity: 1; }
 .mlw-view-item__check {
 	width: 16px; height: 16px; border: 1.5px solid var(--text-faint); border-radius: 50%;
 	flex-shrink: 0; cursor: pointer; transition: all 0.15s ease;
+	display: flex; align-items: center; justify-content: center;
 }
 .mlw-view-item__check:hover { border-color: var(--interactive-accent); background: rgba(var(--interactive-accent-rgb), 0.15); }
+.mlw-view-item__check--starred { border-color: var(--interactive-accent); }
+.mlw-view-item__check--starred::after {
+	content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--interactive-accent);
+}
 .mlw-view-item__badge { font-size: 10px; padding: 1px 6px; border-radius: 3px; background: var(--background-secondary-alt); color: var(--text-faint); }
 .mlw-view-item--completed { opacity: 0.6; }
 .mlw-view-item--completed .mlw-view-item__text { text-decoration: line-through; }

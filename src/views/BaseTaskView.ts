@@ -91,42 +91,31 @@ export abstract class BaseTaskView extends ItemView {
 
 	/** Render a clickable task row with complete checkbox and star toggle. */
 	protected renderTaskRow(task: Task, text: string, metaItems?: string[]): void {
-		const item = this.listEl.createDiv("mlw-view-item");
-
-		// Star toggle — tasks due today or overdue are always visually starred
 		const dueForced = task.due_date !== null && task.due_date <= localToday();
 		const showStarred = task.starred || dueForced;
-		const star = item.createDiv({
-			cls: `mlw-view-item__star${showStarred ? " mlw-view-item__star--active" : ""}`,
-		});
+		const cls = showStarred ? "mlw-view-item mlw-view-item--starred" : "mlw-view-item";
+		const item = this.listEl.createDiv(cls);
+
+		// Star toggle (subtle)
+		const star = item.createDiv({ cls: `mlw-view-item__star${showStarred ? " mlw-view-item__star--active" : ""}` });
 		star.textContent = showStarred ? "\u2605" : "\u2606";
 		star.addEventListener("click", (e) => {
 			e.stopPropagation();
-			if (dueForced && !task.starred) {
-				new Notice("This task is starred because it's due today or overdue.");
-				return;
-			}
-			if (dueForced && task.starred) {
-				new Notice("Can't un-star — this task is due today or overdue.");
-				return;
-			}
+			if (dueForced && !task.starred) { new Notice("This task is starred because it's due today or overdue."); return; }
+			if (dueForced && task.starred) { new Notice("Can't un-star — this task is due today or overdue."); return; }
 			this.store.updateTask(task.id, { starred: !task.starred });
 		});
 
-		// Complete checkbox (circle that checks off the task)
-		const check = item.createDiv("mlw-view-item__check");
-		check.addEventListener("click", (e) => {
-			e.stopPropagation();
-			void this.completeTaskFromView(task);
-		});
+		// Complete checkbox (circle, accent-styled when starred)
+		const checkCls = showStarred ? "mlw-view-item__check mlw-view-item__check--starred" : "mlw-view-item__check";
+		const check = item.createDiv(checkCls);
+		check.addEventListener("click", (e) => { e.stopPropagation(); void this.completeTaskFromView(task); });
 
 		item.createDiv({ text, cls: "mlw-view-item__text" });
 
 		if (metaItems !== undefined && metaItems.length > 0) {
 			const metaEl = item.createDiv("mlw-view-item__meta");
-			for (const m of metaItems) {
-				metaEl.createSpan({ text: m, cls: "mlw-view-item__badge" });
-			}
+			for (const m of metaItems) metaEl.createSpan({ text: m, cls: "mlw-view-item__badge" });
 		}
 
 		item.addEventListener("click", () => void this.navigateToTask(task));
