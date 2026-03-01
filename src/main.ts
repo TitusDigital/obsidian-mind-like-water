@@ -10,6 +10,7 @@ import { UnifiedTaskView } from "views/UnifiedTaskView";
 import { VIEW_TYPE_MLW_UNIFIED, UNIFIED_ICON } from "views/ViewConstants";
 import { StatusBarWidget } from "widgets/StatusBarWidget";
 import { runScheduler } from "services/SchedulerService";
+import { onPluginLoad as runRecurrenceCheck } from "services/RecurrenceService";
 import { runIntegrityCheck } from "services/IntegrityChecker";
 import { registerFocusBlock, registerCompletedBlock, registerProjectTasksBlock } from "codeblocks/registerCodeblocks";
 import { NirvanaImportModal } from "import/NirvanaImportModal";
@@ -97,6 +98,11 @@ export default class MindLikeWaterPlugin extends Plugin {
 		if (transitioned > 0) {
 			console.log(`MLW: Transitioned ${transitioned} scheduled task(s) to Next Action`);
 		}
+
+		// ── Recurrence (spawn missed fixed-schedule instances) ─
+		void runRecurrenceCheck(this.store).then(spawned => {
+			if (spawned > 0) console.log(`MLW: Spawned ${spawned} recurring task instance(s)`);
+		});
 
 		// ── Integrity Check (deferred for metadata cache warmup) ─
 		setTimeout(() => {

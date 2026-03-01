@@ -10,6 +10,7 @@ import {
 	DEFAULT_SETTINGS,
 } from "data/models";
 import { readAllProjects } from "data/ProjectReader";
+import { onTaskCompleted } from "services/RecurrenceService";
 
 const ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 const ID_LENGTH = 6;
@@ -177,15 +178,16 @@ export class DataStore {
 		return task;
 	}
 
-	/**
-	 * Mark a task as completed. Discrete function per spec to support
-	 * future recurrence extension. Sets status + completed_date.
-	 */
+	/** Mark a task as completed. Triggers recurrence spawn if applicable. */
 	completeTask(id: string): Task | undefined {
-		return this.updateTask(id, {
+		const task = this.updateTask(id, {
 			status: TaskStatus.Completed,
 			completed_date: new Date().toISOString(),
 		});
+		if (task !== undefined) {
+			void onTaskCompleted(this, task);
+		}
+		return task;
 	}
 
 	/** Delete a task by ID. Returns true if the task existed. */
