@@ -14,6 +14,7 @@ interface ProjectInfo {
 	nirvanaId: string;
 	title: string;
 	filePath: string;
+	aof: string;
 }
 
 /** Run the full Nirvana → Mind Like Water import. */
@@ -70,7 +71,7 @@ export async function runNirvanaImport(
 		try {
 			const projStatus = (item.state === NirvanaState.Someday || item.state === NirvanaState.Later) ? "someday" : "active";
 			await store.createProjectFile(aof, filePath.replace(`${projectFolder}/`, "").replace(".md", ""), outcome, projStatus);
-			projectMap.set(item.id, { nirvanaId: item.id, title, filePath });
+			projectMap.set(item.id, { nirvanaId: item.id, title, filePath, aof });
 			result.projectsCreated++;
 		} catch (e) {
 			result.errors.push(`Project "${title}": ${String(e)}`);
@@ -255,6 +256,7 @@ async function appendToProjectFile(
 		store.createTask({
 			id,
 			...prepared.fields,
+			area_of_focus: prepared.fields.area_of_focus || proj.aof,
 			project: proj.title,
 			source_file: proj.filePath,
 			source_line: insertIdx + offset + 1,
