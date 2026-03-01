@@ -21,6 +21,7 @@ export function renderReview(
 	listEl: HTMLElement, store: DataStore, app: App,
 	report: IntegrityReport | null,
 	onSwitchTab: (tabId: string) => void,
+	onRefreshIntegrity?: () => void,
 ): void {
 	const settings = store.getSettings();
 	const allTasks = store.getAllTasks();
@@ -83,7 +84,15 @@ export function renderReview(
 	// 5. Deleted tasks (orphans — source note/line was removed)
 	const orphans = (report?.orphanedTasks ?? []).filter(t => store.getTask(t.id) !== undefined);
 	renderSection(listEl, "Deleted Tasks", orphans.length, (body) => {
-		if (orphans.length === 0) { body.createDiv({ text: "No deleted tasks.", cls: "mlw-review-section__empty" }); return; }
+		if (orphans.length === 0) {
+			const empty = body.createDiv("mlw-review-section__empty");
+			empty.createSpan({ text: "No deleted tasks." });
+			if (onRefreshIntegrity !== undefined) {
+				const link = empty.createSpan({ text: " Check now", cls: "mlw-review-section__check-link" });
+				link.addEventListener("click", onRefreshIntegrity);
+			}
+			return;
+		}
 		body.createDiv({
 			text: "These tasks were in notes that have been deleted or modified. Move them to keep working on them, or delete them.",
 			cls: "mlw-review-section__hint",

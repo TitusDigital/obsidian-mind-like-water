@@ -8,7 +8,7 @@ import { renderProjects } from "views/ProjectsTab";
 import { renderReview } from "views/ReviewTab";
 import { type Bucket, bucketByDate } from "views/DateUtils";
 import { buildToolbar } from "views/Toolbar";
-import type { IntegrityReport } from "services/IntegrityChecker";
+import { runIntegrityCheck, type IntegrityReport } from "services/IntegrityChecker";
 
 function localToday(): string {
 	const d = new Date();
@@ -45,6 +45,13 @@ export class UnifiedTaskView extends BaseTaskView {
 	getIcon(): string { return "droplets"; }
 
 	setIntegrityReport(report: IntegrityReport): void { this.integrityReport = report; }
+
+	private refreshIntegrity(): void {
+		void runIntegrityCheck(this.app, this.store).then(report => {
+			this.integrityReport = report;
+			void this.renderContent();
+		});
+	}
 
 	getViewConfig(): ViewConfig {
 		const c = TAB_CFG[this.activeTab];
@@ -117,7 +124,7 @@ export class UnifiedTaskView extends BaseTaskView {
 			case "someday": await this.renderSomeday(); break;
 			case "completed": await this.renderCompleted(); break;
 			case "projects": renderProjects(this.listEl, this.store, this.app); break;
-			case "review": renderReview(this.listEl, this.store, this.app, this.integrityReport, (id) => this.switchTab(id)); break;
+			case "review": renderReview(this.listEl, this.store, this.app, this.integrityReport, (id) => this.switchTab(id), () => this.refreshIntegrity()); break;
 		}
 	}
 
