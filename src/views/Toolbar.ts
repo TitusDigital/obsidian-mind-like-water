@@ -9,16 +9,19 @@ export interface ToolbarConfig {
 	store: DataStore;
 }
 
-/** Build the compact toolbar: AOF button, tab pills, group pills. */
+/** Build the compact toolbar: AOF button, tab pills. */
 export function buildToolbar(el: HTMLElement, cfg: ToolbarConfig, tabBtns: Map<string, HTMLElement>): void {
+	// Skip rebuild while the AOF dropdown is open (multi-select in progress)
+	if (el.querySelector(".mlw-aof__dropdown") !== null) return;
 	el.empty();
 	tabBtns.clear();
 
 	// AOF button
 	const aofWrap = el.createDiv("mlw-aof");
-	const currentAOF = ViewState.getInstance().getActiveAOF();
-	const aofLabel = currentAOF || "All Areas";
-	const aofColor = getAOFColor(cfg.store, currentAOF);
+	const aofs = ViewState.getInstance().getActiveAOFs();
+	const aofLabel = aofs.size === 0 ? "All Areas"
+		: aofs.size === 1 ? (aofs.has("") ? "No Area" : [...aofs][0]!) : `${aofs.size} Areas`;
+	const aofColor = aofs.size === 1 && !aofs.has("") ? getAOFColor(cfg.store, [...aofs][0]!) : "var(--text-muted)";
 	const aofBtn = aofWrap.createEl("button", { cls: "mlw-aof__btn" });
 	const dot = aofBtn.createSpan("mlw-aof__dot");
 	dot.style.background = aofColor;
@@ -55,23 +58,35 @@ function toggleAOFDropdown(wrapEl: HTMLElement, store: DataStore): void {
 	const existing = wrapEl.querySelector(".mlw-aof__dropdown");
 	if (existing) { existing.remove(); return; }
 
+	const vs = ViewState.getInstance();
 	const dropdown = wrapEl.createDiv("mlw-aof__dropdown");
-	dropdown.createDiv({ text: "Switch Area", cls: "mlw-aof__dropdown-title" });
-	const currentAOF = ViewState.getInstance().getActiveAOF();
+	dropdown.createDiv({ text: "Filter Areas", cls: "mlw-aof__dropdown-title" });
 
-	const addOption = (name: string, value: string, color?: string) => {
-		const opt = dropdown.createEl("button", { cls: `mlw-aof__option${currentAOF === value ? " mlw-aof__option--active" : ""}` });
-		if (color !== undefined) { const d = opt.createSpan("mlw-aof__dot"); d.style.background = color; }
-		opt.createSpan({ text: name });
-		if (currentAOF === value) opt.createSpan({ text: "\u2713", cls: "mlw-aof__check" });
-		opt.addEventListener("click", () => { ViewState.getInstance().setActiveAOF(value); dropdown.remove(); });
+	const renderOptions = () => {
+		dropdown.querySelectorAll(".mlw-aof__option, .mlw-aof__dropdown-sep").forEach(el => el.remove());
+		const aofs = vs.getActiveAOFs();
+		const addOpt = (name: string, color: string | undefined, checked: boolean, onClick: () => void) => {
+			const opt = dropdown.createEl("button", { cls: `mlw-aof__option${checked ? " mlw-aof__option--active" : ""}` });
+			if (color !== undefined) { const d = opt.createSpan("mlw-aof__dot"); d.style.background = color; }
+			opt.createSpan({ text: name });
+			if (checked) opt.createSpan({ text: "\u2713", cls: "mlw-aof__check" });
+			opt.addEventListener("click", () => { onClick(); renderOptions(); });
+		};
+		addOpt("All Areas", "var(--text-muted)", aofs.size === 0, () => vs.clearAOFs());
+		for (const aof of store.getSettings().areasOfFocus) {
+			addOpt(aof.name, aof.color.text, aofs.has(aof.name), () => vs.toggleAOF(aof.name));
+		}
+		dropdown.createDiv("mlw-aof__dropdown-sep");
+		addOpt("No Area", "var(--text-faint)", aofs.has(""), () => vs.toggleAOF(""));
 	};
-
-	addOption("All Areas", "", "var(--text-muted)");
-	for (const aof of store.getSettings().areasOfFocus) addOption(aof.name, aof.name, aof.color.text);
+	renderOptions();
 
 	const close = (e: MouseEvent) => {
-		if (!wrapEl.contains(e.target as Node)) { dropdown.remove(); document.removeEventListener("mousedown", close); }
+		if (!wrapEl.contains(e.target as Node)) {
+			dropdown.remove();
+			document.removeEventListener("mousedown", close);
+			vs.notify(); // Rebuild toolbar now that dropdown is gone
+		}
 	};
 	setTimeout(() => document.addEventListener("mousedown", close), 0);
 }

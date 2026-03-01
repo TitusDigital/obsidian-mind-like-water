@@ -6,7 +6,7 @@ export type GroupMode = "aof" | "project" | "context" | "none";
  */
 export class ViewState {
 	private static instance: ViewState | null = null;
-	private activeAOF = "";
+	private activeAOFs = new Set<string>();
 	private groupMode: GroupMode = "aof";
 	private listeners = new Set<() => void>();
 
@@ -17,13 +17,20 @@ export class ViewState {
 		return ViewState.instance;
 	}
 
-	/** Get the active AOF filter. Empty string = "All" (no filtering). */
-	getActiveAOF(): string { return this.activeAOF; }
+	/** Get active AOF filters. Empty set = "All" (no filtering). */
+	getActiveAOFs(): ReadonlySet<string> { return this.activeAOFs; }
 
-	/** Set the active AOF filter. Empty string = "All". */
-	setActiveAOF(aof: string): void {
-		if (aof === this.activeAOF) return;
-		this.activeAOF = aof;
+	/** Toggle an AOF in/out of the active set. */
+	toggleAOF(aof: string): void {
+		if (this.activeAOFs.has(aof)) this.activeAOFs.delete(aof);
+		else this.activeAOFs.add(aof);
+		for (const fn of this.listeners) fn();
+	}
+
+	/** Clear all AOF filters (back to "All Areas"). */
+	clearAOFs(): void {
+		if (this.activeAOFs.size === 0) return;
+		this.activeAOFs = new Set();
 		for (const fn of this.listeners) fn();
 	}
 
@@ -36,6 +43,9 @@ export class ViewState {
 		this.groupMode = mode;
 		for (const fn of this.listeners) fn();
 	}
+
+	/** Force a notification to all listeners without changing state. */
+	notify(): void { for (const fn of this.listeners) fn(); }
 
 	/** Subscribe to state changes. Returns an unsubscribe function. */
 	subscribe(fn: () => void): () => void {

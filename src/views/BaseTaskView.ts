@@ -158,11 +158,11 @@ export abstract class BaseTaskView extends ItemView {
 
 	// ── AOF filtering & grouping ─────────────────────────────────
 
-	/** Filter tasks by the global AOF selection. Returns all tasks when "All". */
+	/** Filter tasks by the global AOF selection. Returns all tasks when set is empty ("All"). */
 	protected filterByActiveAOF(tasks: Task[]): Task[] {
-		const aof = ViewState.getInstance().getActiveAOF();
-		if (aof === "") return tasks;
-		return tasks.filter(t => t.area_of_focus === aof);
+		const aofs = ViewState.getInstance().getActiveAOFs();
+		if (aofs.size === 0) return tasks;
+		return tasks.filter(t => aofs.has(t.area_of_focus));
 	}
 
 	/** Group tasks by a string key. Returns sorted groups with fallback label for empty keys. */

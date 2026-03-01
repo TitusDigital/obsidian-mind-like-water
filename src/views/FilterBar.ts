@@ -46,10 +46,10 @@ export class FilterBar {
 
 	private buildDimensions(tasks: Task[]): FilterDimension[] {
 		const dims: FilterDimension[] = [];
-		const activeAOF = ViewState.getInstance().getActiveAOF();
+		const activeAOFs = ViewState.getInstance().getActiveAOFs();
 
 		// AOF chips — only when global AOF is "All"
-		if (activeAOF === "") {
+		if (activeAOFs.size === 0) {
 			const aofs = this.uniqueSorted(tasks, t => t.area_of_focus || "");
 			if (aofs.length > 0) dims.push({ label: "Area", key: "aof", values: aofs, getTaskValue: (t) => t.area_of_focus || "" });
 		}

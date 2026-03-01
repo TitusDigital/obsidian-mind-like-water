@@ -31,13 +31,13 @@ let activeStatuses = new Set<ProjectStatus>([ProjectStatus.Active]);
 export function renderProjects(listEl: HTMLElement, store: DataStore, app: App): void {
 	const settings = store.getSettings();
 	const projects = readAllProjects(app, settings.projectFolder);
-	const activeAOF = ViewState.getInstance().getActiveAOF();
+	const activeAOFs = ViewState.getInstance().getActiveAOFs();
 
 	// Status chips
 	const chipBar = listEl.createDiv("mlw-filter-bar");
 	const statusCounts = new Map<ProjectStatus, number>();
 	for (const p of projects) {
-		if (activeAOF !== "" && p.area_of_focus !== activeAOF) continue;
+		if (activeAOFs.size > 0 && !activeAOFs.has(p.area_of_focus)) continue;
 		statusCounts.set(p.status, (statusCounts.get(p.status) ?? 0) + 1);
 	}
 	for (const { status, label } of STATUS_LABELS) {
@@ -69,7 +69,7 @@ export function renderProjects(listEl: HTMLElement, store: DataStore, app: App):
 
 	const filtered = projects.filter(p => {
 		if (!activeStatuses.has(p.status)) return false;
-		if (activeAOF !== "" && p.area_of_focus !== activeAOF) return false;
+		if (activeAOFs.size > 0 && !activeAOFs.has(p.area_of_focus)) return false;
 		return true;
 	});
 
