@@ -5,15 +5,16 @@ import { VIEW_TYPE_MLW_UNIFIED } from "views/ViewConstants";
 import { BaseTaskView, type ViewConfig } from "views/BaseTaskView";
 import { FilterBar } from "views/FilterBar";
 import { ViewState } from "views/ViewState";
+import { renderProjects } from "views/ProjectsTab";
 
 function localToday(): string {
 	const d = new Date();
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed";
+type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects";
 type Bucket = "Overdue" | "Today" | "This Week" | "Next Week" | "This Month" | "Later" | "No Date";
-const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed"];
+const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects"];
 
 const TAB_CFG: Record<TabId, { label: string; aof: boolean; filter: boolean; toggle: boolean; empty: string; hint: string }> = {
 	focus: { label: "Focus", aof: true, filter: false, toggle: true, empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
@@ -22,6 +23,7 @@ const TAB_CFG: Record<TabId, { label: string; aof: boolean; filter: boolean; tog
 	scheduled: { label: "Scheduled", aof: true, filter: true, toggle: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
 	someday: { label: "Someday", aof: true, filter: false, toggle: false, empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
 	completed: { label: "Completed", aof: true, filter: false, toggle: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
+	projects: { label: "Projects", aof: true, filter: false, toggle: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
 };
 
 export class UnifiedTaskView extends BaseTaskView {
@@ -113,6 +115,7 @@ export class UnifiedTaskView extends BaseTaskView {
 			case "scheduled": await this.renderScheduled(); break;
 			case "someday": await this.renderSomeday(); break;
 			case "completed": await this.renderCompleted(); break;
+			case "projects": renderProjects(this.listEl, this.store, this.app); break;
 		}
 	}
 
