@@ -1,13 +1,10 @@
 import type { DataStore } from "data/DataStore";
 import { TaskStatus } from "data/models";
-import { ViewState, type GroupMode } from "views/ViewState";
-
-const GROUP_LABELS: [GroupMode, string][] = [["aof", "Area"], ["project", "Project"], ["context", "Context"], ["none", "Flat"]];
+import { ViewState } from "views/ViewState";
 
 export interface ToolbarConfig {
 	activeTab: string;
 	tabLabels: [id: string, label: string][];
-	groupDefault: GroupMode | false;
 	onSwitchTab: (id: string) => void;
 	store: DataStore;
 }
@@ -47,17 +44,6 @@ export function buildToolbar(el: HTMLElement, cfg: ToolbarConfig, tabBtns: Map<s
 		tabBtns.set(id, btn);
 	}
 
-	// Group pills with label
-	if (cfg.groupDefault !== false) {
-		const groupWrap = el.createDiv("mlw-toolbar__section mlw-toolbar__section--group");
-		groupWrap.createDiv({ text: "Group by:", cls: "mlw-toolbar__label" });
-		const groupRow = groupWrap.createDiv("mlw-toolbar__groups");
-		const mode = ViewState.getInstance().getGroupMode();
-		for (const [m, l] of GROUP_LABELS) {
-			const pill = groupRow.createEl("button", { text: l, cls: `mlw-group-pill${mode === m ? " mlw-group-pill--active" : ""}` });
-			pill.addEventListener("click", () => ViewState.getInstance().setGroupMode(m));
-		}
-	}
 }
 
 function getAOFColor(store: DataStore, aofName: string): string {

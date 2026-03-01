@@ -196,7 +196,7 @@ export default class MindLikeWaterPlugin extends Plugin {
 	/** Force CM6 to re-render chips in all open editors. */
 	refreshEditorChips(): void {
 		this.app.workspace.iterateAllLeaves((leaf) => {
-			const cm = (leaf.view as Record<string, unknown>)?.["editor"] as Record<string, unknown> | undefined;
+			const cm = (leaf.view as unknown as Record<string, unknown>)?.["editor"] as Record<string, unknown> | undefined;
 			const editorView = cm?.["cm"] as { dispatch?: (tr: object) => void } | undefined;
 			if (editorView?.dispatch !== undefined) editorView.dispatch({});
 		});

@@ -5,6 +5,7 @@ import { ViewState, type GroupMode } from "views/ViewState";
 
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
+const GROUP_LABELS: [GroupMode, string][] = [["aof", "Area"], ["project", "Project"], ["context", "Context"], ["none", "Flat"]];
 
 function localToday(): string {
 	const d = new Date();
@@ -82,10 +83,11 @@ export abstract class BaseTaskView extends ItemView {
 		if (count !== undefined) group.createSpan({ text: String(count), cls: "mlw-view-group__count" });
 	}
 
-	/** Render a content header with tab title, task count, and optional clickable completed count. */
+	/** Render a content header with tab title, task count, optional completed toggle, and optional group-by selector. */
 	protected renderContentHeader(
 		title: string, count: number,
 		completed?: { count: number; active: boolean; onToggle: () => void },
+		showGroupBy?: boolean,
 	): void {
 		const header = this.listEl.createDiv("mlw-content-header");
 		header.createEl("span", { text: title, cls: "mlw-content-header__title" });
@@ -94,6 +96,17 @@ export abstract class BaseTaskView extends ItemView {
 			const cls = `mlw-content-header__completed${completed.active ? " mlw-content-header__completed--active" : ""}`;
 			const btn = header.createEl("span", { text: `· ${completed.count} completed`, cls });
 			btn.addEventListener("click", completed.onToggle);
+		}
+		if (showGroupBy === true) {
+			const groupEl = header.createDiv("mlw-content-header__group");
+			groupEl.createSpan({ text: "group:", cls: "mlw-content-header__group-label" });
+			const mode = ViewState.getInstance().getGroupMode();
+			for (const [m, label] of GROUP_LABELS) {
+				const active = mode === m;
+				const cls = `mlw-content-header__group-opt${active ? " mlw-content-header__group-opt--active" : ""}`;
+				const opt = groupEl.createEl("span", { text: label, cls });
+				opt.addEventListener("click", () => ViewState.getInstance().setGroupMode(m));
+			}
 		}
 	}
 

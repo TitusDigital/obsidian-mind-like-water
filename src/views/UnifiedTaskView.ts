@@ -69,7 +69,6 @@ export class UnifiedTaskView extends BaseTaskView {
 		buildToolbar(this.toolbarEl, {
 			activeTab: this.activeTab,
 			tabLabels: TAB_ORDER.map(id => [id, TAB_CFG[id].pill] as [string, string]),
-			groupDefault: TAB_CFG[this.activeTab].group,
 			onSwitchTab: (id) => this.switchTab(id),
 			store: this.store,
 		}, this.tabBtns);
@@ -127,7 +126,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		const recent = this.getRecentCompleted();
 		const completed = this.showCompleted ? recent : [];
 		if (tasks.length === 0 && completed.length === 0) { this.renderEmpty(); return; }
-		this.renderContentHeader("Focus", tasks.length, this.completedToggle(recent.length));
+		this.renderContentHeader("Focus", tasks.length, this.completedToggle(recent.length), true);
 		const focusSort = (a: Task, b: Task): number => {
 			if (a.starred !== b.starred) return a.starred ? -1 : 1;
 			return (a.due_date ?? "\uffff").localeCompare(b.due_date ?? "\uffff") || a.sort_order - b.sort_order;
@@ -166,7 +165,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		const recent = this.getRecentCompleted();
 		const completed = this.showCompleted ? recent : [];
 		if (tasks.length === 0 && completed.length === 0) { this.renderEmpty(); return; }
-		this.renderContentHeader("Next", tasks.length, this.completedToggle(recent.length));
+		this.renderContentHeader("Next", tasks.length, this.completedToggle(recent.length), true);
 		const today = localToday();
 		const allTasks = [...tasks, ...completed];
 		for (const { name, color, tasks: gt } of this.groupTasks(allTasks, ViewState.getInstance().getGroupMode())) {
@@ -212,7 +211,7 @@ export class UnifiedTaskView extends BaseTaskView {
 	private async renderSomeday(): Promise<void> {
 		const tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Someday));
 		if (tasks.length === 0) { this.renderEmpty(); return; }
-		this.renderContentHeader("Someday", tasks.length);
+		this.renderContentHeader("Someday", tasks.length, undefined, true);
 		for (const { name, color, tasks: gt } of this.groupTasks(tasks, ViewState.getInstance().getGroupMode())) {
 			if (name !== "") this.renderGroupHeader(name, color, gt.length);
 			for (const task of gt) {
