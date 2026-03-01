@@ -1,4 +1,4 @@
-import { type App, TFile } from "obsidian";
+import { type App, TFile, Notice } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import { TaskStatus, ProjectStatus, type Task } from "data/models";
 import { readAllProjects } from "data/ProjectReader";
@@ -81,14 +81,29 @@ export function renderReview(
 	});
 
 	// 5. Orphaned tasks
-	const orphans = report?.orphanedTasks ?? [];
+	const orphans = (report?.orphanedTasks ?? []).filter(t => store.getTask(t.id) !== undefined);
 	renderSection(listEl, "Orphaned Tasks", orphans.length, (body) => {
 		if (orphans.length === 0) { body.createDiv({ text: "No orphaned tasks.", cls: "mlw-review-section__empty" }); return; }
 		for (const task of orphans) {
 			const row = body.createDiv("mlw-view-item");
-			row.createDiv({ text: `Task ${task.id} (${shortenPath(task.source_file)})`, cls: "mlw-view-item__text" });
-			const del = row.createEl("button", { text: "Delete", cls: "mlw-review-action-select" });
-			del.addEventListener("click", (e) => { e.stopPropagation(); store.deleteTask(task.id); });
+			void readTaskText(app, task).then(text => {
+				const label = text !== `Task ${task.id}` ? text : `Task ${task.id} (${shortenPath(task.source_file)})`;
+				row.createDiv({ text: label, cls: "mlw-view-item__text" });
+			});
+			const select = row.createEl("select", { cls: "mlw-review-action-select" });
+			for (const [val, label] of [["", "---"], ["inbox", "Move to Inbox"], ["next", "Move to Next"], ["drop", "Drop"], ["delete", "Delete"]] as const) {
+				select.createEl("option", { text: label, value: val }).value = val;
+			}
+			select.addEventListener("change", (e) => {
+				e.stopPropagation();
+				switch (select.value) {
+					case "inbox": store.updateTask(task.id, { status: TaskStatus.Inbox }); break;
+					case "next": store.updateTask(task.id, { status: TaskStatus.NextAction }); break;
+					case "drop": store.updateTask(task.id, { status: TaskStatus.Dropped }); break;
+					case "delete": store.deleteTask(task.id); break;
+				}
+			});
+			select.addEventListener("click", (e) => e.stopPropagation());
 		}
 	});
 
@@ -116,6 +131,10 @@ export function renderReview(
 	const btn = listEl.createEl("button", { text: "Mark Review Complete", cls: "mlw-review-complete-btn" });
 	btn.addEventListener("click", () => {
 		store.updateSettings({ lastReviewDate: new Date().toISOString() });
+		btn.textContent = "Review Complete!";
+		btn.addClass("mlw-review-complete-btn--done");
+		btn.disabled = true;
+		new Notice("Weekly review marked complete.");
 	});
 }
 

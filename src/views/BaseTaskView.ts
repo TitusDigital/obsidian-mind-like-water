@@ -1,10 +1,15 @@
-import { ItemView, type WorkspaceLeaf, TFile } from "obsidian";
+import { ItemView, type WorkspaceLeaf, TFile, Notice } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import type { Task } from "data/models";
 import { ViewState } from "views/ViewState";
 
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
+
+function localToday(): string {
+	const d = new Date();
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 /** Configuration returned by each concrete view. */
 export interface ViewConfig {
@@ -116,13 +121,23 @@ export abstract class BaseTaskView extends ItemView {
 	protected renderTaskRow(task: Task, text: string, metaItems?: string[]): void {
 		const item = this.listEl.createDiv("mlw-view-item");
 
-		// Star toggle
+		// Star toggle — tasks due today or overdue are always visually starred
+		const dueForced = task.due_date !== null && task.due_date <= localToday();
+		const showStarred = task.starred || dueForced;
 		const star = item.createDiv({
-			cls: `mlw-view-item__star${task.starred ? " mlw-view-item__star--active" : ""}`,
+			cls: `mlw-view-item__star${showStarred ? " mlw-view-item__star--active" : ""}`,
 		});
-		star.textContent = task.starred ? "\u2605" : "\u2606";
+		star.textContent = showStarred ? "\u2605" : "\u2606";
 		star.addEventListener("click", (e) => {
 			e.stopPropagation();
+			if (dueForced && !task.starred) {
+				new Notice("This task is starred because it's due today or overdue.");
+				return;
+			}
+			if (dueForced && task.starred) {
+				new Notice("Can't un-star — this task is due today or overdue.");
+				return;
+			}
 			this.store.updateTask(task.id, { starred: !task.starred });
 		});
 
@@ -152,9 +167,10 @@ export abstract class BaseTaskView extends ItemView {
 		if (!(file instanceof TFile)) return;
 		const content = await this.app.vault.read(file);
 		const lines = content.split("\n");
-		const line = lines[task.source_line - 1];
+		const idx = this.findTaskLine(lines, task);
+		const line = lines[idx];
 		if (line === undefined) return;
-		lines[task.source_line - 1] = line.replace(/^(\s*[-*]\s+)\[ \]/, "$1[x]");
+		lines[idx] = line.replace(/^(\s*[-*]\s+)\[ \]/, "$1[x]");
 		await this.app.vault.modify(file, lines.join("\n"));
 	}
 
@@ -200,6 +216,28 @@ export abstract class BaseTaskView extends ItemView {
 
 	// ── Shared utilities ──────────────────────────────────────────
 
+	/** Find the actual line index (0-based) for a task by locating its mlw comment.
+	 *  Falls back to the stored source_line if the comment isn't found. Updates
+	 *  the DataStore when drift is detected. */
+	private findTaskLine(lines: string[], task: Task): number {
+		const storedIdx = task.source_line - 1;
+		const marker = `<!-- mlw:${task.id} -->`;
+
+		// Fast path: stored line is still correct
+		if (storedIdx >= 0 && storedIdx < lines.length && lines[storedIdx]!.includes(marker)) {
+			return storedIdx;
+		}
+
+		// Scan for the marker
+		for (let i = 0; i < lines.length; i++) {
+			if (lines[i]!.includes(marker)) {
+				this.store.updateTask(task.id, { source_line: i + 1 });
+				return i;
+			}
+		}
+		return storedIdx;
+	}
+
 	/** Read the task text from its source file, stripping checkbox and MLW comment. */
 	protected async readTaskText(task: Task): Promise<string> {
 		const file = this.app.vault.getAbstractFileByPath(task.source_file);
@@ -207,7 +245,8 @@ export abstract class BaseTaskView extends ItemView {
 
 		const content = await this.app.vault.cachedRead(file);
 		const lines = content.split("\n");
-		const line = lines[task.source_line - 1];
+		const idx = this.findTaskLine(lines, task);
+		const line = lines[idx];
 		if (line === undefined) return this.fallbackText(task);
 
 		const cleaned = line.replace(CHECKBOX_PREFIX_RE, "").replace(MLW_COMMENT_RE, "").trim();
@@ -217,10 +256,16 @@ export abstract class BaseTaskView extends ItemView {
 	/** Navigate the editor to the task's source file and line. */
 	protected async navigateToTask(task: Task): Promise<void> {
 		const file = this.app.vault.getAbstractFileByPath(task.source_file);
-		if (!(file instanceof TFile)) return;
+		if (!(file instanceof TFile)) {
+			new Notice("Source file no longer exists for this task.");
+			return;
+		}
 
-		const leaf = this.app.workspace.getLeaf(false);
-		await leaf.openFile(file, { eState: { line: task.source_line - 1 } });
+		const content = await this.app.vault.cachedRead(file);
+		const idx = this.findTaskLine(content.split("\n"), task);
+
+		const leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf("tab");
+		await leaf.openFile(file, { eState: { line: idx } });
 		this.app.workspace.setActiveLeaf(leaf, { focus: true });
 	}
 

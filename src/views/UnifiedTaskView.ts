@@ -1,4 +1,4 @@
-import type { WorkspaceLeaf } from "obsidian";
+import { type WorkspaceLeaf, setIcon } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import { TaskStatus, type Task } from "data/models";
 import { VIEW_TYPE_MLW_UNIFIED } from "views/ViewConstants";
@@ -18,15 +18,15 @@ function localToday(): string {
 type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects" | "review";
 const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects", "review"];
 
-const TAB_CFG: Record<TabId, { label: string; aof: boolean; filter: boolean; toggle: boolean; empty: string; hint: string }> = {
-	focus: { label: "Focus", aof: true, filter: false, toggle: true, empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
-	inbox: { label: "Inbox", aof: false, filter: false, toggle: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
-	next: { label: "Next", aof: true, filter: true, toggle: true, empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
-	scheduled: { label: "Scheduled", aof: true, filter: true, toggle: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
-	someday: { label: "Someday", aof: true, filter: false, toggle: false, empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
-	completed: { label: "Completed", aof: true, filter: false, toggle: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
-	projects: { label: "Projects", aof: true, filter: false, toggle: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
-	review: { label: "Review", aof: false, filter: false, toggle: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
+const TAB_CFG: Record<TabId, { label: string; icon: string; aof: boolean; filter: boolean; toggle: boolean; empty: string; hint: string }> = {
+	focus: { label: "Focus", icon: "star", aof: true, filter: false, toggle: true, empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
+	inbox: { label: "Inbox", icon: "inbox", aof: false, filter: false, toggle: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
+	next: { label: "Next", icon: "zap", aof: true, filter: true, toggle: true, empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
+	scheduled: { label: "Scheduled", icon: "calendar", aof: true, filter: true, toggle: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
+	someday: { label: "Someday", icon: "coffee", aof: true, filter: false, toggle: false, empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
+	completed: { label: "Completed", icon: "check-circle", aof: true, filter: false, toggle: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
+	projects: { label: "Projects", icon: "folder", aof: true, filter: false, toggle: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
+	review: { label: "Review", icon: "clipboard-check", aof: false, filter: false, toggle: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
 };
 
 export class UnifiedTaskView extends BaseTaskView {
@@ -50,12 +50,17 @@ export class UnifiedTaskView extends BaseTaskView {
 
 	protected override buildLayout(): void {
 		const { contentEl } = this;
+		contentEl.createDiv({ text: "Action Lists", cls: "mlw-tab-bar-label" });
 		const tabBar = contentEl.createDiv("mlw-tab-bar");
 		for (const id of TAB_ORDER) {
+			const cfg = TAB_CFG[id];
 			const btn = tabBar.createEl("button", {
-				text: TAB_CFG[id].label,
 				cls: `mlw-tab-btn${id === this.activeTab ? " mlw-tab-btn--active" : ""}`,
+				attr: { "aria-label": cfg.label },
 			});
+			const iconEl = btn.createSpan("mlw-tab-icon");
+			setIcon(iconEl, cfg.icon);
+			btn.createSpan({ text: cfg.label, cls: "mlw-tab-label" });
 			btn.addEventListener("click", () => this.switchTab(id));
 			this.tabBtns.set(id, btn);
 		}
@@ -84,6 +89,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		this.controlsEl.empty();
 		const c = TAB_CFG[this.activeTab];
 		if (c.aof) {
+			this.controlsEl.createSpan({ text: "AOF:", cls: "mlw-aof-label" });
 			const sel = this.controlsEl.createEl("select", { cls: "mlw-aof-selector" });
 			sel.createEl("option", { text: "All", value: "" }).value = "";
 			for (const aof of this.store.getSettings().areasOfFocus) {
@@ -156,11 +162,15 @@ export class UnifiedTaskView extends BaseTaskView {
 		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.NextAction));
 		if (this.filterBar !== null) tasks = this.filterBar.applyFilters(tasks);
 		if (tasks.length === 0 && !this.showCompleted) { this.renderEmpty(); return; }
+		const today = localToday();
 		for (const { name, color, tasks: gt } of this.groupByAOF(tasks)) {
 			this.renderGroupHeader(name, color);
 			for (const task of gt) {
 				const text = await this.readTaskText(task);
 				const meta: string[] = [];
+				if (task.due_date !== null && task.due_date <= today) {
+					meta.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
+				}
 				if (task.project !== null) meta.push(task.project);
 				if (task.context !== null) meta.push(`@${task.context}`);
 				if (task.starred) meta.push("\u2B50");

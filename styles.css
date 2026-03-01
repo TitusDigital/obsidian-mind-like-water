@@ -256,6 +256,10 @@
 .mlw-view-header__toggle:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
 .mlw-view-header__toggle--active { background: var(--interactive-accent); color: var(--text-on-accent); border-color: var(--interactive-accent); }
 .mlw-view-header__toggle--active:hover { filter: brightness(1.1); }
+.mlw-aof-label {
+	font-size: 11px; color: var(--text-muted); margin-right: 4px;
+	font-family: var(--font-interface); font-weight: 500;
+}
 .mlw-aof-selector {
 	font-size: 11px; padding: 2px 6px; border-radius: 4px; cursor: pointer;
 	background: var(--background-secondary-alt); color: var(--text-muted);
@@ -349,15 +353,29 @@
 .theme-light .mlw-editor-popover { box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15); }
 
 /* ── Unified Tab Bar ─────────────────────────────────── */
-.mlw-tab-bar { display: flex; gap: 0; border-bottom: 1px solid var(--background-modifier-border); }
+.mlw-tab-bar-label {
+	font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em;
+	color: var(--text-faint); padding: 8px 8px 2px; font-family: var(--font-interface);
+}
+.mlw-tab-bar {
+	display: flex; gap: 0; border-bottom: 1px solid var(--background-modifier-border);
+	container-type: inline-size;
+}
 .mlw-tab-btn {
 	flex: 1; padding: 8px 4px; font-size: 11px; text-align: center;
 	cursor: pointer; border: none; background: transparent;
 	color: var(--text-muted); border-bottom: 2px solid transparent;
 	font-family: var(--font-interface); transition: all 0.15s ease;
+	display: flex; align-items: center; justify-content: center; gap: 4px;
 }
+.mlw-tab-icon { display: flex; align-items: center; }
+.mlw-tab-icon svg { width: 14px; height: 14px; }
+.mlw-tab-label { white-space: nowrap; }
 .mlw-tab-btn:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
 .mlw-tab-btn--active { color: var(--text-normal); border-bottom-color: var(--interactive-accent); }
+
+/* Responsive: hide text at narrow widths, show icon-only */
+@container (max-width: 450px) { .mlw-tab-label { display: none; } }
 .mlw-view-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 16px; }
 .mlw-view-controls:empty { display: none; }
 
@@ -420,6 +438,10 @@
 	transition: filter 0.15s ease;
 }
 .mlw-review-complete-btn:hover { filter: brightness(1.1); }
+.mlw-review-complete-btn--done {
+	background: var(--text-success, #28a745); cursor: default; opacity: 0.85;
+}
+.mlw-review-complete-btn--done:hover { filter: none; }
 .mlw-ribbon-badge--review { background: var(--text-error); }
 
 /* ── Codeblock Embeds ────────────────────────────────── */
