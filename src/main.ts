@@ -12,6 +12,7 @@ import { StatusBarWidget } from "widgets/StatusBarWidget";
 import { runScheduler } from "services/SchedulerService";
 import { runIntegrityCheck } from "services/IntegrityChecker";
 import { registerFocusBlock, registerCompletedBlock, registerProjectTasksBlock } from "codeblocks/registerCodeblocks";
+import { NirvanaImportModal } from "import/NirvanaImportModal";
 
 export default class MindLikeWaterPlugin extends Plugin {
 	store!: DataStore;
@@ -51,6 +52,12 @@ export default class MindLikeWaterPlugin extends Plugin {
 		});
 
 		this.addCommand({ id: "open-view", name: "Open Mind Like Water", callback: () => void this.openTab("focus") });
+
+		this.addCommand({
+			id: "import-nirvana",
+			name: "Import from Nirvana",
+			callback: () => { new NirvanaImportModal(this.app, this.store).open(); },
+		});
 
 		// ── View ──────────────────────────────────────────────
 		this.registerView(VIEW_TYPE_MLW_UNIFIED, (leaf) => new UnifiedTaskView(leaf, this.store));

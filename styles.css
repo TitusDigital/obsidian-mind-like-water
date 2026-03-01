@@ -444,6 +444,31 @@
 .mlw-review-complete-btn--done:hover { filter: none; }
 .mlw-ribbon-badge--review { background: var(--text-error); }
 
+/* ── Nirvana Import Modal ─────────────────────────────── */
+.mlw-import-modal { max-width: 480px; }
+.mlw-import-file-row { margin-bottom: 12px; }
+.mlw-import-file-input { margin-bottom: 4px; }
+.mlw-import-file-label { font-size: 12px; color: var(--text-muted); }
+.mlw-import-section-title { font-size: 13px; font-weight: 600; margin-bottom: 6px; color: var(--text-normal); }
+.mlw-import-summary { margin-bottom: 12px; padding: 8px 12px; background: var(--background-secondary); border-radius: 6px; }
+.mlw-import-stats { font-size: 12px; color: var(--text-muted); line-height: 1.6; }
+.mlw-import-options { margin-bottom: 16px; }
+.mlw-import-option { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 4px 0; cursor: pointer; }
+.mlw-import-actions { margin-top: 8px; }
+.mlw-import-btn { width: 100%; }
+.mlw-import-progress { margin-bottom: 12px; }
+.mlw-import-progress__text { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.mlw-import-progress__bar-outer {
+	height: 6px; border-radius: 3px; background: var(--background-modifier-border); overflow: hidden;
+}
+.mlw-import-progress__bar {
+	height: 100%; width: 0%; border-radius: 3px; background: var(--interactive-accent);
+	transition: width 0.2s ease;
+}
+.mlw-import-result { margin-bottom: 12px; font-size: 13px; line-height: 1.6; }
+.mlw-import-result__title { font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--text-success, #28a745); }
+.mlw-import-result__error { color: var(--text-error); font-size: 12px; }
+
 /* ── Codeblock Embeds ────────────────────────────────── */
 .mlw-embed { padding: 4px 0; }
 .mlw-embed__empty { padding: 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
