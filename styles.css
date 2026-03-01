@@ -383,6 +383,45 @@
 	border: 1px solid var(--background-modifier-border); font-family: var(--font-interface);
 }
 
+/* ── Review Tab ──────────────────────────────────────── */
+.mlw-review-section { border-bottom: 1px solid var(--background-modifier-border); }
+.mlw-review-section__header {
+	display: flex; align-items: center; gap: 8px;
+	padding: 10px 16px; cursor: pointer;
+	font-size: 13px; font-weight: 600; color: var(--text-normal);
+	list-style: none;
+}
+.mlw-review-section__header::-webkit-details-marker { display: none; }
+.mlw-review-section__header::before {
+	content: "\25B6"; font-size: 10px; color: var(--text-faint);
+	transition: transform 0.15s ease;
+}
+.mlw-review-section[open] > .mlw-review-section__header::before { transform: rotate(90deg); }
+.mlw-review-section__title { flex: 1; }
+.mlw-review-section__count {
+	font-size: 11px; padding: 1px 8px; border-radius: 10px;
+	background: var(--background-secondary-alt); color: var(--text-faint);
+}
+.mlw-review-section__body { padding: 0 16px 12px; }
+.mlw-review-section__empty { font-size: 12px; color: var(--text-faint); padding: 8px 0; }
+.mlw-review-section__link {
+	font-size: 13px; color: var(--interactive-accent);
+	cursor: pointer; text-decoration: underline; padding: 4px 0;
+}
+.mlw-review-action-select {
+	font-size: 10px; padding: 1px 4px; border-radius: 4px; cursor: pointer;
+	background: var(--background-secondary-alt); color: var(--text-muted);
+	border: 1px solid var(--background-modifier-border); font-family: var(--font-interface);
+}
+.mlw-review-complete-btn {
+	display: block; width: calc(100% - 32px); margin: 16px auto; padding: 8px 16px;
+	font-size: 13px; font-weight: 600; border: none; border-radius: 6px; cursor: pointer;
+	background: var(--interactive-accent); color: var(--text-on-accent);
+	transition: filter 0.15s ease;
+}
+.mlw-review-complete-btn:hover { filter: brightness(1.1); }
+.mlw-ribbon-badge--review { background: var(--text-error); }
+
 /* ── Codeblock Embeds ────────────────────────────────── */
 .mlw-embed { padding: 4px 0; }
 .mlw-embed__empty { padding: 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
