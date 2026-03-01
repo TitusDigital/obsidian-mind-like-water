@@ -84,7 +84,11 @@ export interface Task {
 	created: string;
 	modified: string;
 	recurrence_rule: string | null;
+	recurrence_type: "fixed" | "relative" | null;
+	recurrence_template_id: string | null;
 	parent_task_id: string | null;
+	recurrence_suspended: boolean;
+	recurrence_spawn_count: number;
 	cached_text: string | null;
 }
 
@@ -104,6 +108,8 @@ export interface MLWSettings {
 	lastReviewDate: string | null;
 	chipDisplayMode: ChipDisplayMode;
 	chipCycleModifier: "ctrl" | "shift";
+	recurrenceGloballyPaused: boolean;
+	recurrencePausedAt: string | null;
 }
 
 /** The complete structure persisted to data.json */
@@ -142,6 +148,8 @@ export const DEFAULT_SETTINGS: MLWSettings = {
 	lastReviewDate: null,
 	chipDisplayMode: ChipDisplayMode.Full,
 	chipCycleModifier: "ctrl" as const,
+	recurrenceGloballyPaused: false,
+	recurrencePausedAt: null,
 };
 
 export const DEFAULT_DATA: MLWData = {

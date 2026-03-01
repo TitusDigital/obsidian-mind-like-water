@@ -1,4 +1,4 @@
-import { type Plugin, normalizePath, type TFile } from "obsidian";
+import { type App, type Plugin, normalizePath, type TFile } from "obsidian";
 import {
 	type MLWData,
 	type MLWSettings,
@@ -26,6 +26,9 @@ export class DataStore {
 		this.data = structuredClone(DEFAULT_DATA);
 	}
 
+	/** Expose the Obsidian App for services that need vault access. */
+	get app(): App { return this.plugin.app; }
+
 	// ── Initialization ──────────────────────────────────────────────
 
 	/** Load data.json, merge with defaults, optionally create backup. */
@@ -37,6 +40,13 @@ export class DataStore {
 				tasks: (loaded.tasks as Record<string, Task> | undefined) ?? {},
 				settings: { ...DEFAULT_SETTINGS, ...(loaded.settings ?? {}) },
 			};
+			// Backward-compat: default new recurrence fields on existing tasks
+			for (const task of Object.values(this.data.tasks)) {
+				task.recurrence_type ??= null;
+				task.recurrence_template_id ??= null;
+				task.recurrence_suspended ??= false;
+				task.recurrence_spawn_count ??= 0;
+			}
 		} else {
 			this.data = structuredClone(DEFAULT_DATA);
 		}
@@ -134,7 +144,11 @@ export class DataStore {
 			created: now,
 			modified: now,
 			recurrence_rule: fields.recurrence_rule ?? null,
+			recurrence_type: fields.recurrence_type ?? null,
+			recurrence_template_id: fields.recurrence_template_id ?? null,
 			parent_task_id: fields.parent_task_id ?? null,
+			recurrence_suspended: fields.recurrence_suspended ?? false,
+			recurrence_spawn_count: fields.recurrence_spawn_count ?? 0,
 			cached_text: fields.cached_text ?? null,
 		};
 		this.data.tasks[task.id] = task;
@@ -214,6 +228,11 @@ export class DataStore {
 	/** Get all tasks with a given status. */
 	getTasksByStatus(status: TaskStatus): Task[] {
 		return Object.values(this.data.tasks).filter(t => t.status === status);
+	}
+
+	/** Get all tasks sharing a recurrence template ID. */
+	getTasksByTemplateId(templateId: string): Task[] {
+		return Object.values(this.data.tasks).filter(t => t.recurrence_template_id === templateId);
 	}
 
 	/** Count starred tasks that are not completed or dropped. */

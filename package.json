@@ -28,6 +28,7 @@
 		"vitest": "^4.0.18"
 	},
 	"dependencies": {
-		"obsidian": "latest"
+		"obsidian": "latest",
+		"rrule": "^2.8.1"
 	}
 }
