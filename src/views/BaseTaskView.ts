@@ -1,7 +1,7 @@
 import { ItemView, type WorkspaceLeaf, TFile, Notice } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import type { Task } from "data/models";
-import { ViewState } from "views/ViewState";
+import { ViewState, type GroupMode } from "views/ViewState";
 
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
@@ -183,35 +183,47 @@ export abstract class BaseTaskView extends ItemView {
 		return tasks.filter(t => t.area_of_focus === aof);
 	}
 
-	/** Group tasks by Area of Focus, respecting settings display order. */
-	protected groupByAOF(tasks: Task[]): { name: string; color: string; tasks: Task[] }[] {
-		const aofOrder = this.store.getSettings().areasOfFocus;
+	/** Group tasks by a string key. Returns sorted groups with fallback label for empty keys. */
+	private groupTasksBy(tasks: Task[], getKey: (t: Task) => string, fallback: string): { name: string; tasks: Task[] }[] {
 		const grouped = new Map<string, Task[]>();
-
 		for (const task of tasks) {
-			const key = task.area_of_focus || "";
+			const key = getKey(task) || "";
 			const existing = grouped.get(key);
-			if (existing !== undefined) {
-				existing.push(task);
-			} else {
-				grouped.set(key, [task]);
-			}
+			if (existing !== undefined) existing.push(task);
+			else grouped.set(key, [task]);
 		}
-
-		const result: { name: string; color: string; tasks: Task[] }[] = [];
-		for (const aof of aofOrder) {
-			const groupTasks = grouped.get(aof.name);
-			if (groupTasks !== undefined) {
-				groupTasks.sort((a, b) => a.sort_order - b.sort_order);
-				result.push({ name: aof.name, color: aof.color.text, tasks: groupTasks });
-				grouped.delete(aof.name);
-			}
+		const result: { name: string; tasks: Task[] }[] = [];
+		const noKey = grouped.get("");
+		grouped.delete("");
+		for (const [key, gt] of [...grouped].sort((a, b) => a[0].localeCompare(b[0]))) {
+			gt.sort((a, b) => a.sort_order - b.sort_order);
+			result.push({ name: key, tasks: gt });
 		}
-		for (const [key, groupTasks] of grouped) {
-			groupTasks.sort((a, b) => a.sort_order - b.sort_order);
-			result.push({ name: key || "Uncategorized", color: "#A0A0A0", tasks: groupTasks });
+		if (noKey !== undefined) {
+			noKey.sort((a, b) => a.sort_order - b.sort_order);
+			result.push({ name: fallback, tasks: noKey });
 		}
 		return result;
+	}
+
+	/** Group tasks by AOF, respecting settings display order and colors. */
+	protected groupByAOF(tasks: Task[]): { name: string; color?: string; tasks: Task[] }[] {
+		const aofOrder = this.store.getSettings().areasOfFocus;
+		const colorMap = new Map(aofOrder.map(a => [a.name, a.color.text]));
+		const orderMap = new Map(aofOrder.map((a, i) => [a.name, i]));
+		const groups = this.groupTasksBy(tasks, t => t.area_of_focus || "", "Uncategorized");
+		groups.sort((a, b) => (orderMap.get(a.name) ?? 999) - (orderMap.get(b.name) ?? 999));
+		return groups.map(g => ({ ...g, color: colorMap.get(g.name) ?? "#A0A0A0" }));
+	}
+
+	/** Dispatch to the appropriate grouping function based on mode. */
+	protected groupTasks(tasks: Task[], mode: GroupMode): { name: string; color?: string; tasks: Task[] }[] {
+		switch (mode) {
+			case "aof": return this.groupByAOF(tasks);
+			case "project": return this.groupTasksBy(tasks, t => t.project ?? "", "No Project");
+			case "context": return this.groupTasksBy(tasks, t => t.context ?? "", "No Context");
+			case "none": return [{ name: "", tasks: [...tasks].sort((a, b) => a.sort_order - b.sort_order) }];
+		}
 	}
 
 	// ── Shared utilities ──────────────────────────────────────────

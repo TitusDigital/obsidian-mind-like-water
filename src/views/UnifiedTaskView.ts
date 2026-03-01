@@ -5,7 +5,7 @@ import { readAllProjects } from "data/ProjectReader";
 import { VIEW_TYPE_MLW_UNIFIED } from "views/ViewConstants";
 import { BaseTaskView, type ViewConfig } from "views/BaseTaskView";
 import { FilterBar } from "views/FilterBar";
-import { ViewState } from "views/ViewState";
+import { ViewState, type GroupMode } from "views/ViewState";
 import { renderProjects } from "views/ProjectsTab";
 import { renderReview } from "views/ReviewTab";
 import { type Bucket, bucketByDate } from "views/DateUtils";
@@ -19,15 +19,15 @@ function localToday(): string {
 type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects" | "review";
 const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects", "review"];
 
-const TAB_CFG: Record<TabId, { label: string; icon: string; filter: boolean; toggle: boolean; empty: string; hint: string }> = {
-	focus: { label: "Focus", icon: "star", filter: false, toggle: true, empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
-	inbox: { label: "Inbox", icon: "inbox", filter: false, toggle: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
-	next: { label: "Next", icon: "zap", filter: true, toggle: true, empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
-	scheduled: { label: "Scheduled", icon: "calendar", filter: true, toggle: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
-	someday: { label: "Someday", icon: "coffee", filter: false, toggle: false, empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
-	completed: { label: "Completed", icon: "check-circle", filter: false, toggle: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
-	projects: { label: "Projects", icon: "folder", filter: false, toggle: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
-	review: { label: "Review", icon: "clipboard-check", filter: false, toggle: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
+const TAB_CFG: Record<TabId, { label: string; icon: string; filter: boolean; toggle: boolean; group: GroupMode | false; empty: string; hint: string }> = {
+	focus: { label: "Focus", icon: "star", filter: false, toggle: true, group: "none", empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
+	inbox: { label: "Inbox", icon: "inbox", filter: false, toggle: false, group: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
+	next: { label: "Next", icon: "zap", filter: true, toggle: true, group: "aof", empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
+	scheduled: { label: "Scheduled", icon: "calendar", filter: true, toggle: false, group: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
+	someday: { label: "Someday", icon: "coffee", filter: false, toggle: false, group: "aof", empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
+	completed: { label: "Completed", icon: "check-circle", filter: false, toggle: false, group: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
+	projects: { label: "Projects", icon: "folder", filter: false, toggle: false, group: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
+	review: { label: "Review", icon: "clipboard-check", filter: false, toggle: false, group: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
 };
 
 export class UnifiedTaskView extends BaseTaskView {
@@ -85,6 +85,8 @@ export class UnifiedTaskView extends BaseTaskView {
 		this.tabBtns.get(id)?.addClass("mlw-tab-btn--active");
 		this.showCompleted = false;
 		this.filterBar = null;
+		const cfg = TAB_CFG[id];
+		if (cfg.group !== false) ViewState.getInstance().setGroupMode(cfg.group);
 		this.rebuildControls();
 		void this.renderContent();
 	}
@@ -98,19 +100,11 @@ export class UnifiedTaskView extends BaseTaskView {
 		}
 		sel.value = ViewState.getInstance().getActiveAOF();
 		sel.addEventListener("change", () => ViewState.getInstance().setActiveAOF(sel.value));
-
 		const aof = ViewState.getInstance().getActiveAOF();
-		const allTasks = this.store.getAllTasks();
-		const activeTasks = allTasks.filter(t => {
-			if (t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped) return false;
-			return aof === "" || t.area_of_focus === aof;
-		});
-		const projects = readAllProjects(this.app, this.store.getSettings().projectFolder)
-			.filter(p => p.status === ProjectStatus.Active && (aof === "" || p.area_of_focus === aof));
-		this.appHeaderEl.createSpan({
-			text: `${activeTasks.length} tasks \u00B7 ${projects.length} projects`,
-			cls: "mlw-app-header__stats",
-		});
+		const match = (v: string) => aof === "" || v === aof;
+		const taskCount = this.store.getAllTasks().filter(t => t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped && match(t.area_of_focus)).length;
+		const projCount = readAllProjects(this.app, this.store.getSettings().projectFolder).filter(p => p.status === ProjectStatus.Active && match(p.area_of_focus)).length;
+		this.appHeaderEl.createSpan({ text: `${taskCount} tasks \u00B7 ${projCount} projects`, cls: "mlw-app-header__stats" });
 	}
 
 	private rebuildControls(): void {
@@ -128,6 +122,15 @@ export class UnifiedTaskView extends BaseTaskView {
 				btn.toggleClass("mlw-view-header__toggle--active", this.showCompleted);
 				void this.renderContent();
 			});
+		}
+		if (c.group !== false) {
+			const bar = this.controlsEl.createDiv("mlw-group-selector");
+			bar.createSpan({ text: "Group:", cls: "mlw-group-selector__label" });
+			const mode = ViewState.getInstance().getGroupMode();
+			for (const [m, l] of [["aof", "Area"], ["project", "Project"], ["context", "Context"], ["none", "None"]] as const) {
+				const pill = bar.createEl("button", { text: l, cls: `mlw-group-selector__pill${mode === m ? " mlw-group-selector__pill--active" : ""}` });
+				pill.addEventListener("click", () => ViewState.getInstance().setGroupMode(m as GroupMode));
+			}
 		}
 		if (c.filter) {
 			this.filterBar = new FilterBar(this.controlsEl, () => void this.renderContent());
@@ -153,15 +156,17 @@ export class UnifiedTaskView extends BaseTaskView {
 	private async renderFocus(): Promise<void> {
 		const tasks = this.filterByActiveAOF(this.getFocusTasks());
 		if (tasks.length === 0 && !this.showCompleted) { this.renderEmpty(); return; }
-		tasks.sort((a, b) => {
+		const focusSort = (a: Task, b: Task): number => {
 			if (a.starred !== b.starred) return a.starred ? -1 : 1;
-			const da = a.due_date ?? "\uffff"; const db = b.due_date ?? "\uffff";
-			if (da !== db) return da.localeCompare(db);
-			return a.sort_order - b.sort_order;
-		});
-		for (const task of tasks) {
-			const text = await this.readTaskText(task);
-			this.renderTaskRow(task, text, this.buildFocusBadges(task));
+			return (a.due_date ?? "\uffff").localeCompare(b.due_date ?? "\uffff") || a.sort_order - b.sort_order;
+		};
+		for (const { name, color, tasks: gt } of this.groupTasks(tasks, ViewState.getInstance().getGroupMode())) {
+			if (name !== "") this.renderGroupHeader(name, color);
+			gt.sort(focusSort);
+			for (const task of gt) {
+				const text = await this.readTaskText(task);
+				this.renderTaskRow(task, text, this.buildFocusBadges(task));
+			}
 		}
 		if (this.showCompleted) await this.renderRecentlyCompleted();
 	}
@@ -181,14 +186,12 @@ export class UnifiedTaskView extends BaseTaskView {
 		if (this.filterBar !== null) { this.filterBar.rebuild(tasks); tasks = this.filterBar.applyFilters(tasks); }
 		if (tasks.length === 0 && !this.showCompleted) { this.renderEmpty(); return; }
 		const today = localToday();
-		for (const { name, color, tasks: gt } of this.groupByAOF(tasks)) {
-			this.renderGroupHeader(name, color);
+		for (const { name, color, tasks: gt } of this.groupTasks(tasks, ViewState.getInstance().getGroupMode())) {
+			if (name !== "") this.renderGroupHeader(name, color);
 			for (const task of gt) {
 				const text = await this.readTaskText(task);
 				const meta: string[] = [];
-				if (task.due_date !== null && task.due_date <= today) {
-					meta.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
-				}
+				if (task.due_date !== null && task.due_date <= today) meta.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
 				if (task.project !== null) meta.push(task.project);
 				if (task.context !== null) meta.push(`@${task.context}`);
 				if (task.starred) meta.push("\u2B50");
@@ -220,8 +223,8 @@ export class UnifiedTaskView extends BaseTaskView {
 	private async renderSomeday(): Promise<void> {
 		const tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Someday));
 		if (tasks.length === 0) { this.renderEmpty(); return; }
-		for (const { name, color, tasks: gt } of this.groupByAOF(tasks)) {
-			this.renderGroupHeader(name, color);
+		for (const { name, color, tasks: gt } of this.groupTasks(tasks, ViewState.getInstance().getGroupMode())) {
+			if (name !== "") this.renderGroupHeader(name, color);
 			for (const task of gt) {
 				const text = await this.readTaskText(task);
 				this.renderTaskRow(task, text, task.project !== null ? [task.project] : []);

@@ -1,3 +1,5 @@
+export type GroupMode = "aof" | "project" | "context" | "none";
+
 /**
  * Singleton reactive store for global view state.
  * Session-only — not persisted to data.json.
@@ -5,6 +7,7 @@
 export class ViewState {
 	private static instance: ViewState | null = null;
 	private activeAOF = "";
+	private groupMode: GroupMode = "aof";
 	private listeners = new Set<() => void>();
 
 	static getInstance(): ViewState {
@@ -21,6 +24,16 @@ export class ViewState {
 	setActiveAOF(aof: string): void {
 		if (aof === this.activeAOF) return;
 		this.activeAOF = aof;
+		for (const fn of this.listeners) fn();
+	}
+
+	/** Get the active grouping mode. */
+	getGroupMode(): GroupMode { return this.groupMode; }
+
+	/** Set the active grouping mode. */
+	setGroupMode(mode: GroupMode): void {
+		if (mode === this.groupMode) return;
+		this.groupMode = mode;
 		for (const fn of this.listeners) fn();
 	}
 
