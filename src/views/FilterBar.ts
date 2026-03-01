@@ -106,27 +106,32 @@ export class FilterBar {
 					text: label,
 					cls: `mlw-filter-chip mlw-filter-chip--${state}`,
 				});
-				chip.addEventListener("click", (e) => this.cycleChip(chipKey, chip, e));
+				chip.addEventListener("click", (e) => this.cycleChip(dim.key, chipKey, e));
 			}
 		}
 	}
 
-	private cycleChip(key: string, chip: HTMLSpanElement, e: MouseEvent): void {
-		const current = this.states.get(key) ?? "off";
+	private cycleChip(dimKey: string, chipKey: string, e: MouseEvent): void {
+		const current = this.states.get(chipKey) ?? "off";
 		let next: ChipState;
+
 		if (e.shiftKey) {
 			next = current === "exclude" ? "off" : "exclude";
-		} else {
+		} else if (e.ctrlKey || e.metaKey) {
 			next = current === "include" ? "off" : "include";
-		}
-
-		if (next === "off") {
-			this.states.delete(key);
 		} else {
-			this.states.set(key, next);
+			// Radio: clear other includes in this dimension
+			next = current === "include" ? "off" : "include";
+			if (next === "include") {
+				const prefix = `${dimKey}:`;
+				for (const [k, v] of this.states) {
+					if (k !== chipKey && k.startsWith(prefix) && v === "include") this.states.delete(k);
+				}
+			}
 		}
 
-		chip.className = `mlw-filter-chip mlw-filter-chip--${next}`;
+		if (next === "off") this.states.delete(chipKey);
+		else this.states.set(chipKey, next);
 		this.onFilterChange();
 	}
 

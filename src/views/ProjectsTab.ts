@@ -48,9 +48,20 @@ export function renderProjects(listEl: HTMLElement, store: DataStore, app: App):
 			text: `${label} (${count})`,
 			cls: `mlw-filter-chip mlw-filter-chip--${on ? "include" : "off"}`,
 		});
-		chip.addEventListener("click", () => {
-			if (activeStatuses.has(status)) activeStatuses.delete(status);
-			else activeStatuses.add(status);
+		chip.addEventListener("click", (e) => {
+			if (e.ctrlKey || e.metaKey) {
+				// Multi-select toggle
+				if (activeStatuses.has(status)) activeStatuses.delete(status);
+				else activeStatuses.add(status);
+			} else {
+				// Radio: click switches to this status, click again turns off
+				if (activeStatuses.has(status) && activeStatuses.size === 1) {
+					activeStatuses.delete(status);
+				} else {
+					activeStatuses.clear();
+					activeStatuses.add(status);
+				}
+			}
 			listEl.empty();
 			renderProjects(listEl, store, app);
 		});
