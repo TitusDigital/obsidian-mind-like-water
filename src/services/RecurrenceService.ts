@@ -23,15 +23,13 @@ function formatLocalDate(date: Date): string {
 // ── End Condition ────────────────────────────────────────────────
 
 function parseRRule(ruleStr: string): RRule {
-	const clean = ruleStr.startsWith("RRULE:") ? ruleStr : `RRULE:${ruleStr}`;
-	return RRule.fromString(clean);
+	return RRule.fromString(ruleStr.startsWith("RRULE:") ? ruleStr : `RRULE:${ruleStr}`);
 }
 
-function hasReachedEndCondition(store: DataStore, template: Task, nextDate?: Date): boolean {
-	const opts = parseRRule(template.recurrence_rule!).origOptions;
-	if (opts.count != null && template.recurrence_spawn_count >= opts.count) return true;
-	if (opts.until != null && nextDate !== undefined && nextDate > opts.until) return true;
-	return false;
+function hasReachedEndCondition(store: DataStore, tmpl: Task, nextDate?: Date): boolean {
+	const opts = parseRRule(tmpl.recurrence_rule!).origOptions;
+	if (opts.count != null && tmpl.recurrence_spawn_count >= opts.count) return true;
+	return opts.until != null && nextDate !== undefined && nextDate > opts.until;
 }
 
 function incrementSpawnCount(store: DataStore, templateId: string): void {
@@ -134,6 +132,10 @@ export async function onTaskCompleted(store: DataStore, task: Task): Promise<voi
 
 		const completedDate = task.completed_date;
 		if (completedDate === null) return;
+
+		// Duplicate guard: check if a child was already spawned from this task
+		const existing = store.getTasksByTemplateId(templateId);
+		if (existing.some(t => t.parent_task_id === task.id)) return;
 
 		const rule = parseRRule(task.recurrence_rule);
 		const anchor = new Date(completedDate);
@@ -288,12 +290,8 @@ async function resumeFixedForTemplate(store: DataStore, templateId: string): Pro
 /** Generate a human-readable summary of a recurrence rule. */
 export function getRecurrenceSummary(ruleStr: string, type: "fixed" | "relative" | null): string {
 	try {
-		const rule = parseRRule(ruleStr);
-		const text = rule.toText();
-		const capitalized = text.charAt(0).toUpperCase() + text.slice(1);
-		if (type === "relative") return `${capitalized} after completion`;
-		return capitalized;
-	} catch {
-		return "Custom recurrence";
-	}
+		const text = parseRRule(ruleStr).toText();
+		const cap = text.charAt(0).toUpperCase() + text.slice(1);
+		return type === "relative" ? `${cap} after completion` : cap;
+	} catch { return "Custom recurrence"; }
 }

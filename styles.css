@@ -581,6 +581,11 @@
 .mlw-recurrence-history__date { font-size: 11px; color: var(--text-muted); }
 .mlw-recurrence-history__current-tag { font-size: 10px; color: var(--text-accent); font-weight: 600; }
 
+/* ── Recurrence Delete Modal ────────────────────────── */
+.mlw-recurrence-delete__text { font-size: 14px; color: var(--text-muted); margin: 8px 0 16px; }
+.mlw-recurrence-delete__buttons { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.mlw-recurrence-delete__buttons button { padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+
 /* ── Codeblock Embeds ────────────────────────────────── */
 .mlw-embed { padding: 4px 0; }
 .mlw-embed__empty { padding: 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
