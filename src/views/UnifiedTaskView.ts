@@ -6,15 +6,17 @@ import { BaseTaskView, type ViewConfig } from "views/BaseTaskView";
 import { FilterBar } from "views/FilterBar";
 import { ViewState } from "views/ViewState";
 import { renderProjects } from "views/ProjectsTab";
+import { renderReview } from "views/ReviewTab";
+import { type Bucket, bucketByDate } from "views/DateUtils";
+import type { IntegrityReport } from "services/IntegrityChecker";
 
 function localToday(): string {
 	const d = new Date();
 	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects";
-type Bucket = "Overdue" | "Today" | "This Week" | "Next Week" | "This Month" | "Later" | "No Date";
-const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects"];
+type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects" | "review";
+const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects", "review"];
 
 const TAB_CFG: Record<TabId, { label: string; aof: boolean; filter: boolean; toggle: boolean; empty: string; hint: string }> = {
 	focus: { label: "Focus", aof: true, filter: false, toggle: true, empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
@@ -24,6 +26,7 @@ const TAB_CFG: Record<TabId, { label: string; aof: boolean; filter: boolean; tog
 	someday: { label: "Someday", aof: true, filter: false, toggle: false, empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
 	completed: { label: "Completed", aof: true, filter: false, toggle: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
 	projects: { label: "Projects", aof: true, filter: false, toggle: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
+	review: { label: "Review", aof: false, filter: false, toggle: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
 };
 
 export class UnifiedTaskView extends BaseTaskView {
@@ -32,10 +35,13 @@ export class UnifiedTaskView extends BaseTaskView {
 	private filterBar: FilterBar | null = null;
 	private controlsEl!: HTMLElement;
 	private tabBtns = new Map<TabId, HTMLElement>();
+	private integrityReport: IntegrityReport | null = null;
 
 	getViewType(): string { return VIEW_TYPE_MLW_UNIFIED; }
 	getDisplayText(): string { return "Mind Like Water"; }
 	getIcon(): string { return "droplets"; }
+
+	setIntegrityReport(report: IntegrityReport): void { this.integrityReport = report; }
 
 	getViewConfig(): ViewConfig {
 		const c = TAB_CFG[this.activeTab];
@@ -116,6 +122,7 @@ export class UnifiedTaskView extends BaseTaskView {
 			case "someday": await this.renderSomeday(); break;
 			case "completed": await this.renderCompleted(); break;
 			case "projects": renderProjects(this.listEl, this.store, this.app); break;
+			case "review": renderReview(this.listEl, this.store, this.app, this.integrityReport, (id) => this.switchTab(id)); break;
 		}
 	}
 
@@ -167,7 +174,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Scheduled));
 		if (this.filterBar !== null) tasks = this.filterBar.applyFilters(tasks);
 		if (tasks.length === 0) { this.renderEmpty(); return; }
-		const buckets = this.bucketByDate(tasks);
+		const buckets = bucketByDate(tasks);
 		for (const label of ["Overdue", "Today", "This Week", "Next Week", "This Month", "Later", "No Date"] as Bucket[]) {
 			const items = buckets.get(label);
 			if (items === undefined || items.length === 0) continue;
@@ -258,38 +265,4 @@ export class UnifiedTaskView extends BaseTaskView {
 		return badges;
 	}
 
-	private bucketByDate(tasks: Task[]): Map<Bucket, Task[]> {
-		const today = this.stripTime(new Date());
-		const endOfWeek = this.addDays(today, 7 - today.getDay());
-		const endOfNextWeek = this.addDays(endOfWeek, 7);
-		const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
-		const result = new Map<Bucket, Task[]>();
-		const sorted = [...tasks].sort((a, b) => {
-			if (a.start_date === null && b.start_date === null) return 0;
-			if (a.start_date === null) return 1;
-			if (b.start_date === null) return -1;
-			return a.start_date.localeCompare(b.start_date);
-		});
-		for (const task of sorted) {
-			const bucket = this.getBucket(task.start_date, today, endOfWeek, endOfNextWeek, endOfMonth);
-			const list = result.get(bucket);
-			if (list !== undefined) list.push(task);
-			else result.set(bucket, [task]);
-		}
-		return result;
-	}
-
-	private getBucket(sd: string | null, today: Date, eow: Date, eonw: Date, eom: Date): Bucket {
-		if (sd === null) return "No Date";
-		const d = this.stripTime(new Date(sd));
-		if (d < today) return "Overdue";
-		if (d.getTime() === today.getTime()) return "Today";
-		if (d < eow) return "This Week";
-		if (d < eonw) return "Next Week";
-		if (d < eom) return "This Month";
-		return "Later";
-	}
-
-	private stripTime(d: Date): Date { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-	private addDays(d: Date, n: number): Date { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 }

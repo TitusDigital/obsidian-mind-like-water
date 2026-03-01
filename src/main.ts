@@ -1,4 +1,4 @@
-import { Plugin, normalizePath, Platform } from "obsidian";
+import { Plugin, normalizePath, Platform, TFile } from "obsidian";
 import { DataStore } from "data/DataStore";
 import { TaskStatus } from "data/models";
 import { MLWSettingTab } from "settings/MLWSettings";
@@ -10,6 +10,7 @@ import { UnifiedTaskView } from "views/UnifiedTaskView";
 import { VIEW_TYPE_MLW_UNIFIED, UNIFIED_ICON } from "views/ViewConstants";
 import { StatusBarWidget } from "widgets/StatusBarWidget";
 import { runScheduler } from "services/SchedulerService";
+import { runIntegrityCheck } from "services/IntegrityChecker";
 import { registerFocusBlock, registerCompletedBlock, registerProjectTasksBlock } from "codeblocks/registerCodeblocks";
 
 export default class MindLikeWaterPlugin extends Plugin {
@@ -80,6 +81,31 @@ export default class MindLikeWaterPlugin extends Plugin {
 			console.log(`MLW: Transitioned ${transitioned} scheduled task(s) to Next Action`);
 		}
 
+		// ── Integrity Check (deferred for metadata cache warmup) ─
+		setTimeout(() => {
+			void runIntegrityCheck(this.app, this.store).then(report => {
+				if (report.autoCleanedCount > 0) {
+					console.log(`MLW: Auto-cleaned ${report.autoCleanedCount} orphaned task(s)`);
+				}
+				for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_MLW_UNIFIED)) {
+					(leaf.view as UnifiedTaskView).setIntegrityReport(report);
+				}
+				this.refreshAllViews();
+			});
+		}, 2000);
+
+		// ── File Delete → mark tasks orphaned ─────────────────
+		this.registerEvent(
+			this.app.vault.on("delete", (file) => {
+				if (!(file instanceof TFile) || file.extension !== "md") return;
+				for (const task of this.store.getAllTasks()) {
+					if (task.source_file === file.path) {
+						this.store.updateTask(task.id, { source_line: -1 });
+					}
+				}
+			}),
+		);
+
 		// ── Reactive Updates ──────────────────────────────────
 		this.store.setOnChange(() => this.onTasksChanged());
 
@@ -129,6 +155,12 @@ export default class MindLikeWaterPlugin extends Plugin {
 		} else {
 			this.ribbonBadgeEl.style.display = "none";
 		}
+
+		// Review reminder indicator
+		const settings = this.store.getSettings();
+		const needsReview = settings.lastReviewDate === null ||
+			(Date.now() - new Date(settings.lastReviewDate).getTime()) > settings.reviewReminderDays * 86400000;
+		this.ribbonBadgeEl.toggleClass("mlw-ribbon-badge--review", needsReview);
 
 		this.refreshAllViews();
 	}
