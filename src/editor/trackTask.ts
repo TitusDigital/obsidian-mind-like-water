@@ -24,9 +24,11 @@ export function trackTaskAtLine(
 	const fileInfo = view.state.field(editorInfoField);
 	const filePath = fileInfo.file?.path ?? "unknown";
 
+	const cached_text = line.text.replace(CHECKBOX_RE, "").trim() || null;
 	const task = store.createTask({
 		source_file: filePath,
 		source_line: line.number,
+		cached_text,
 	});
 
 	const comment = " <!-- mlw:" + task.id + " -->";
@@ -53,9 +55,11 @@ export function trackTaskWithEditor(
 
 	const filePath = ctx.file?.path ?? "unknown";
 
+	const cached_text = lineText.replace(CHECKBOX_RE, "").trim() || null;
 	const task = store.createTask({
 		source_file: filePath,
 		source_line: cursor.line + 1, // Obsidian Editor is 0-based, model is 1-based
+		cached_text,
 	});
 
 	const comment = " <!-- mlw:" + task.id + " -->";

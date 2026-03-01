@@ -3,7 +3,7 @@ import { TFile } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import { TaskStatus } from "data/models";
 
-const MLW_LINE_RE = /^- \[([xX ])\] .+<!-- mlw:([a-z0-9]{6}) -->/;
+const MLW_LINE_RE = /^- \[([xX ])\] (.+?)(?:\s*<!-- mlw:([a-z0-9]{6}) -->)/;
 const DEBOUNCE_MS = 300;
 
 /**
@@ -36,12 +36,16 @@ async function processFile(file: TFile, store: DataStore, plugin: Plugin): Promi
 		if (match === null) continue;
 
 		const checked = match[1] !== " ";
-		const id = match[2];
+		const text = match[2]?.trim() ?? null;
+		const id = match[3];
 		if (id === undefined) continue;
 
 		const task = store.getTask(id);
 		if (task === undefined) continue;
 
+		if (text !== null && text !== task.cached_text) {
+			store.updateTask(id, { cached_text: text });
+		}
 		if (checked && task.status !== TaskStatus.Completed && task.status !== TaskStatus.Dropped) {
 			store.completeTask(id);
 		} else if (!checked && task.status === TaskStatus.Completed) {

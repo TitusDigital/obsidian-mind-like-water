@@ -490,6 +490,7 @@
 }
 .mlw-review-section__body { padding: 0 16px 12px; }
 .mlw-review-section__empty { font-size: 12px; color: var(--text-faint); padding: 8px 0; }
+.mlw-review-section__hint { font-size: 12px; color: var(--text-muted); padding: 4px 0 8px; line-height: 1.4; }
 .mlw-review-section__link {
 	font-size: 13px; color: var(--interactive-accent);
 	cursor: pointer; text-decoration: underline; padding: 4px 0;

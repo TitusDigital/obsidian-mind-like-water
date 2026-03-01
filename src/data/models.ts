@@ -85,6 +85,7 @@ export interface Task {
 	modified: string;
 	recurrence_rule: string | null;
 	parent_task_id: string | null;
+	cached_text: string | null;
 }
 
 /** Plugin settings (persisted in data.json alongside tasks) */

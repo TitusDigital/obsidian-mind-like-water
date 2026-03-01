@@ -264,7 +264,7 @@ export abstract class BaseTaskView extends ItemView {
 	}
 
 	protected fallbackText(task: Task): string {
-		return `Task in ${this.shortenPath(task.source_file)}`;
+		return task.cached_text ?? `Task in ${this.shortenPath(task.source_file)}`;
 	}
 
 	protected shortenPath(path: string): string {

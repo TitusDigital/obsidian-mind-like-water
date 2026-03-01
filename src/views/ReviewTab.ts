@@ -80,19 +80,28 @@ export function renderReview(
 		for (const task of staleActions) renderReviewTaskRow(body, task, store, app);
 	});
 
-	// 5. Orphaned tasks
+	// 5. Deleted tasks (orphans — source note/line was removed)
 	const orphans = (report?.orphanedTasks ?? []).filter(t => store.getTask(t.id) !== undefined);
-	renderSection(listEl, "Orphaned Tasks", orphans.length, (body) => {
-		if (orphans.length === 0) { body.createDiv({ text: "No orphaned tasks.", cls: "mlw-review-section__empty" }); return; }
+	renderSection(listEl, "Deleted Tasks", orphans.length, (body) => {
+		if (orphans.length === 0) { body.createDiv({ text: "No deleted tasks.", cls: "mlw-review-section__empty" }); return; }
+		body.createDiv({
+			text: "These tasks were in notes that have been deleted or modified. Move them to keep working on them, or delete them.",
+			cls: "mlw-review-section__hint",
+		});
 		for (const task of orphans) {
 			const row = body.createDiv("mlw-view-item");
-			void readTaskText(app, task).then(text => {
-				const label = text !== `Task ${task.id}` ? text : `Task ${task.id} (${shortenPath(task.source_file)})`;
-				row.createDiv({ text: label, cls: "mlw-view-item__text" });
-			});
+			const label = task.cached_text ?? `Task in ${shortenPath(task.source_file)}`;
+			row.createDiv({ text: label, cls: "mlw-view-item__text" });
+			const meta: string[] = [];
+			if (task.area_of_focus) meta.push(task.area_of_focus);
+			if (task.project !== null) meta.push(task.project);
+			if (meta.length > 0) {
+				const metaEl = row.createDiv("mlw-view-item__meta");
+				for (const m of meta) metaEl.createSpan({ text: m, cls: "mlw-view-item__badge" });
+			}
 			const select = row.createEl("select", { cls: "mlw-review-action-select" });
-			for (const [val, label] of [["", "---"], ["inbox", "Move to Inbox"], ["next", "Move to Next"], ["drop", "Drop"], ["delete", "Delete"]] as const) {
-				select.createEl("option", { text: label, value: val }).value = val;
+			for (const [val, lbl] of [["", "---"], ["inbox", "Move to Inbox"], ["next", "Move to Next"], ["drop", "Drop"], ["delete", "Delete"]] as const) {
+				select.createEl("option", { text: lbl, value: val }).value = val;
 			}
 			select.addEventListener("change", (e) => {
 				e.stopPropagation();

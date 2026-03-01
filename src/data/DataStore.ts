@@ -135,6 +135,7 @@ export class DataStore {
 			modified: now,
 			recurrence_rule: fields.recurrence_rule ?? null,
 			parent_task_id: fields.parent_task_id ?? null,
+			cached_text: fields.cached_text ?? null,
 		};
 		this.data.tasks[task.id] = task;
 		this.scheduleSave();
