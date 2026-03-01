@@ -17,22 +17,54 @@ interface CardGroup {
 	cards: ProjectCard[];
 }
 
+const STATUS_LABELS: { status: ProjectStatus; label: string }[] = [
+	{ status: ProjectStatus.Active, label: "Active" },
+	{ status: ProjectStatus.Someday, label: "Someday" },
+	{ status: ProjectStatus.OnHold, label: "On Hold" },
+	{ status: ProjectStatus.Completed, label: "Completed" },
+	{ status: ProjectStatus.Dropped, label: "Dropped" },
+];
+
+let activeStatuses = new Set<ProjectStatus>([ProjectStatus.Active]);
+
 /** Render project cards grouped by AOF into the given container. */
 export function renderProjects(listEl: HTMLElement, store: DataStore, app: App): void {
 	const settings = store.getSettings();
 	const projects = readAllProjects(app, settings.projectFolder);
-
 	const activeAOF = ViewState.getInstance().getActiveAOF();
+
+	// Status chips
+	const chipBar = listEl.createDiv("mlw-filter-bar");
+	const statusCounts = new Map<ProjectStatus, number>();
+	for (const p of projects) {
+		if (activeAOF !== "" && p.area_of_focus !== activeAOF) continue;
+		statusCounts.set(p.status, (statusCounts.get(p.status) ?? 0) + 1);
+	}
+	for (const { status, label } of STATUS_LABELS) {
+		const count = statusCounts.get(status) ?? 0;
+		if (count === 0) continue;
+		const on = activeStatuses.has(status);
+		const chip = chipBar.createSpan({
+			text: `${label} (${count})`,
+			cls: `mlw-filter-chip mlw-filter-chip--${on ? "include" : "off"}`,
+		});
+		chip.addEventListener("click", () => {
+			if (activeStatuses.has(status)) activeStatuses.delete(status);
+			else activeStatuses.add(status);
+			listEl.empty();
+			renderProjects(listEl, store, app);
+		});
+	}
+
 	const filtered = projects.filter(p => {
-		if (p.status !== ProjectStatus.Active) return false;
+		if (!activeStatuses.has(p.status)) return false;
 		if (activeAOF !== "" && p.area_of_focus !== activeAOF) return false;
 		return true;
 	});
 
 	if (filtered.length === 0) {
 		const empty = listEl.createDiv("mlw-view-empty");
-		empty.createEl("p", { text: "No active projects." });
-		empty.createEl("p", { text: "Create a project from the metadata editor.", cls: "mlw-view-empty__hint" });
+		empty.createEl("p", { text: "No projects match the selected filters." });
 		return;
 	}
 
