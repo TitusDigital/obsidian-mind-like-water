@@ -1,6 +1,6 @@
 import type { EditorView } from "@codemirror/view";
 import type { DataStore } from "data/DataStore";
-import { type Task, type AOFColor, FALLBACK_AOF_COLOR } from "data/models";
+import { type Task, type AOFColor, TaskStatus, FALLBACK_AOF_COLOR } from "data/models";
 import { ProjectCreator } from "components/ProjectCreator";
 import {
 	STATUS_LABELS, ENERGY_LABELS,
@@ -74,6 +74,12 @@ export class MetadataEditor {
 	}
 
 	close(): void {
+		// Auto-promote: if task is still in Inbox but has an AOF, move to Next Action
+		if (this.task.status === TaskStatus.Inbox && this.task.area_of_focus !== "") {
+			this.store.updateTask(this.task.id, { status: TaskStatus.NextAction });
+			this.view.dispatch({});
+		}
+
 		if (this.scrollHandler !== null) {
 			this.view.scrollDOM.removeEventListener("scroll", this.scrollHandler);
 			this.scrollHandler = null;
