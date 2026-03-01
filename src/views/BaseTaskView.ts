@@ -82,11 +82,19 @@ export abstract class BaseTaskView extends ItemView {
 		if (count !== undefined) group.createSpan({ text: String(count), cls: "mlw-view-group__count" });
 	}
 
-	/** Render a content header with tab title and task count. */
-	protected renderContentHeader(title: string, count: number): void {
+	/** Render a content header with tab title, task count, and optional clickable completed count. */
+	protected renderContentHeader(
+		title: string, count: number,
+		completed?: { count: number; active: boolean; onToggle: () => void },
+	): void {
 		const header = this.listEl.createDiv("mlw-content-header");
 		header.createEl("span", { text: title, cls: "mlw-content-header__title" });
 		header.createEl("span", { text: `${count} task${count !== 1 ? "s" : ""}`, cls: "mlw-content-header__count" });
+		if (completed !== undefined && completed.count > 0) {
+			const cls = `mlw-content-header__completed${completed.active ? " mlw-content-header__completed--active" : ""}`;
+			const btn = header.createEl("span", { text: `${completed.count} completed`, cls });
+			btn.addEventListener("click", completed.onToggle);
+		}
 	}
 
 	/** Render a clickable task row with complete checkbox and star toggle. */

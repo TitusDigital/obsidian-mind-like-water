@@ -20,15 +20,15 @@ const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "c
 
 import type { GroupMode } from "views/ViewState";
 
-const TAB_CFG: Record<TabId, { label: string; pill: string; filter: boolean; toggle: boolean; group: GroupMode | false; empty: string; hint: string }> = {
-	focus: { label: "Focus", pill: "Focus", filter: false, toggle: true, group: "none", empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
-	inbox: { label: "Inbox", pill: "Inbox", filter: false, toggle: false, group: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
-	next: { label: "Next", pill: "Next", filter: true, toggle: true, group: "aof", empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
-	scheduled: { label: "Scheduled", pill: "Sched", filter: true, toggle: false, group: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
-	someday: { label: "Someday", pill: "Someday", filter: false, toggle: false, group: "aof", empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
-	completed: { label: "Completed", pill: "Done", filter: false, toggle: false, group: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
-	projects: { label: "Projects", pill: "Projects", filter: false, toggle: false, group: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
-	review: { label: "Review", pill: "Review", filter: false, toggle: false, group: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
+const TAB_CFG: Record<TabId, { label: string; pill: string; filter: boolean; completed: boolean; group: GroupMode | false; empty: string; hint: string }> = {
+	focus: { label: "Focus", pill: "Focus", filter: false, completed: true, group: "none", empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
+	inbox: { label: "Inbox", pill: "Inbox", filter: false, completed: false, group: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
+	next: { label: "Next", pill: "Next", filter: true, completed: true, group: "aof", empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
+	scheduled: { label: "Scheduled", pill: "Sched", filter: true, completed: false, group: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
+	someday: { label: "Someday", pill: "Someday", filter: false, completed: false, group: "aof", empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
+	completed: { label: "Completed", pill: "Done", filter: false, completed: false, group: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
+	projects: { label: "Projects", pill: "Projects", filter: false, completed: false, group: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
+	review: { label: "Review", pill: "Review", filter: false, completed: false, group: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
 };
 
 export class UnifiedTaskView extends BaseTaskView {
@@ -89,26 +89,27 @@ export class UnifiedTaskView extends BaseTaskView {
 
 	private rebuildControls(): void {
 		this.controlsEl.empty();
-		const c = TAB_CFG[this.activeTab];
-		if (c.toggle) {
-			const btn = this.controlsEl.createEl("button", {
-				cls: "mlw-view-header__toggle", attr: { "aria-label": "Show completed" },
-			});
-			btn.textContent = this.showCompleted ? "Hide completed" : "Show completed";
-			btn.toggleClass("mlw-view-header__toggle--active", this.showCompleted);
-			btn.addEventListener("click", () => {
-				this.showCompleted = !this.showCompleted;
-				btn.textContent = this.showCompleted ? "Hide completed" : "Show completed";
-				btn.toggleClass("mlw-view-header__toggle--active", this.showCompleted);
-				void this.renderContent();
-			});
-		}
-		if (c.filter) {
+		if (TAB_CFG[this.activeTab].filter) {
 			this.filterBar = new FilterBar(this.controlsEl, () => void this.renderContent());
 		}
 	}
 
 	override refresh(): void { this.rebuildToolbar(); super.refresh(); }
+
+	private getRecentCompletedCount(): number {
+		const days = this.store.getSettings().completedVisibilityDays;
+		const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+		return this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Completed))
+			.filter(t => t.completed_date !== null && t.completed_date >= cutoff).length;
+	}
+
+	private completedToggle(): { count: number; active: boolean; onToggle: () => void } {
+		return {
+			count: this.getRecentCompletedCount(),
+			active: this.showCompleted,
+			onToggle: () => { this.showCompleted = !this.showCompleted; void this.renderContent(); },
+		};
+	}
 
 	async renderContent(): Promise<void> {
 		this.listEl.empty();
@@ -127,7 +128,7 @@ export class UnifiedTaskView extends BaseTaskView {
 	private async renderFocus(): Promise<void> {
 		const tasks = this.filterByActiveAOF(this.getFocusTasks());
 		if (tasks.length === 0 && !this.showCompleted) { this.renderEmpty(); return; }
-		this.renderContentHeader("Focus", tasks.length);
+		this.renderContentHeader("Focus", tasks.length, this.completedToggle());
 		const focusSort = (a: Task, b: Task): number => {
 			if (a.starred !== b.starred) return a.starred ? -1 : 1;
 			return (a.due_date ?? "\uffff").localeCompare(b.due_date ?? "\uffff") || a.sort_order - b.sort_order;
@@ -158,7 +159,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.NextAction));
 		if (this.filterBar !== null) { this.filterBar.rebuild(tasks); tasks = this.filterBar.applyFilters(tasks); }
 		if (tasks.length === 0 && !this.showCompleted) { this.renderEmpty(); return; }
-		this.renderContentHeader("Next", tasks.length);
+		this.renderContentHeader("Next", tasks.length, this.completedToggle());
 		const today = localToday();
 		for (const { name, color, tasks: gt } of this.groupTasks(tasks, ViewState.getInstance().getGroupMode())) {
 			if (name !== "") this.renderGroupHeader(name, color, gt.length);
