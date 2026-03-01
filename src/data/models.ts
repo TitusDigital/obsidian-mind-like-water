@@ -21,6 +21,16 @@ export enum CaptureLocation {
 	InboxFile = "inbox_file",
 }
 
+/** How much detail to show on inline editor chips */
+export enum ChipDisplayMode { Full = "full", Compact = "compact", Dot = "dot" }
+
+/** Returns the next chip display mode in the cycle: full → compact → dot → full */
+export function nextChipDisplayMode(current: ChipDisplayMode): ChipDisplayMode {
+	if (current === ChipDisplayMode.Full) return ChipDisplayMode.Compact;
+	if (current === ChipDisplayMode.Compact) return ChipDisplayMode.Dot;
+	return ChipDisplayMode.Full;
+}
+
 /** Project lifecycle statuses (stored in YAML frontmatter) */
 export enum ProjectStatus {
 	Active = "active",
@@ -91,6 +101,8 @@ export interface MLWSettings {
 	completedVisibilityDays: number;
 	dataStoreBackup: boolean;
 	lastReviewDate: string | null;
+	chipDisplayMode: ChipDisplayMode;
+	chipCycleModifier: "ctrl" | "shift";
 }
 
 /** The complete structure persisted to data.json */
@@ -127,6 +139,8 @@ export const DEFAULT_SETTINGS: MLWSettings = {
 	completedVisibilityDays: 1,
 	dataStoreBackup: true,
 	lastReviewDate: null,
+	chipDisplayMode: ChipDisplayMode.Full,
+	chipCycleModifier: "ctrl" as const,
 };
 
 export const DEFAULT_DATA: MLWData = {

@@ -1,6 +1,6 @@
 import { Plugin, normalizePath, Platform, TFile } from "obsidian";
 import { DataStore } from "data/DataStore";
-import { TaskStatus } from "data/models";
+import { TaskStatus, nextChipDisplayMode } from "data/models";
 import { MLWSettingTab } from "settings/MLWSettings";
 import { mlwEditorExtension } from "editor/ChipDecoration";
 import { canTrackLine, trackTaskWithEditor } from "editor/trackTask";
@@ -57,6 +57,16 @@ export default class MindLikeWaterPlugin extends Plugin {
 			id: "import-nirvana",
 			name: "Import from Nirvana",
 			callback: () => { new NirvanaImportModal(this.app, this.store).open(); },
+		});
+
+		this.addCommand({
+			id: "cycle-chip-display",
+			name: "Cycle chip display mode (full \u2192 compact \u2192 dot)",
+			callback: () => {
+				const current = this.store.getSettings().chipDisplayMode;
+				this.store.updateSettings({ chipDisplayMode: nextChipDisplayMode(current) });
+				this.refreshEditorChips();
+			},
 		});
 
 		// ── View ──────────────────────────────────────────────
@@ -181,6 +191,15 @@ export default class MindLikeWaterPlugin extends Plugin {
 			const view = leaf.view as UnifiedTaskView;
 			if (typeof view.refresh === "function") view.refresh();
 		}
+	}
+
+	/** Force CM6 to re-render chips in all open editors. */
+	refreshEditorChips(): void {
+		this.app.workspace.iterateAllLeaves((leaf) => {
+			const cm = (leaf.view as Record<string, unknown>)?.["editor"] as Record<string, unknown> | undefined;
+			const editorView = cm?.["cm"] as { dispatch?: (tr: object) => void } | undefined;
+			if (editorView?.dispatch !== undefined) editorView.dispatch({});
+		});
 	}
 
 	private async ensureProjectFolder(): Promise<void> {

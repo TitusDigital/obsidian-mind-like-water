@@ -1,5 +1,5 @@
 import { WidgetType, type EditorView } from "@codemirror/view";
-import { TaskStatus, FALLBACK_AOF_COLOR } from "data/models";
+import { TaskStatus, FALLBACK_AOF_COLOR, ChipDisplayMode, nextChipDisplayMode } from "data/models";
 import type { AOFColor } from "data/models";
 import type { DataStore } from "data/DataStore";
 import { MetadataEditor } from "components/MetadataEditor";
@@ -23,9 +23,8 @@ export class ChipWidget extends WidgetType {
 			return span;
 		}
 
-		// Build chip content parts
+		// Build full chip content (always needed for tooltip)
 		const parts: string[] = [];
-
 		if (task.status === TaskStatus.Inbox && task.area_of_focus === "") {
 			parts.push("\u{1F4E5} Inbox");
 		} else {
@@ -35,24 +34,43 @@ export class ChipWidget extends WidgetType {
 			if (task.due_date !== null) parts.push("\u{1F4C5} " + task.due_date);
 			if (parts.length === 0) parts.push("Tracked");
 		}
+		const fullText = parts.join(" \u00B7 ");
 
-		span.className = "mlw-chip";
-		span.textContent = parts.join(" \u00B7 ");
-
-		// Look up AOF color
+		// Apply AOF color (all modes)
 		const color = this.getAOFColor(task.area_of_focus);
 		span.style.backgroundColor = color.bg;
 		span.style.color = color.text;
 		span.style.borderColor = color.border;
 
-		// Mousedown → open metadata editor popover (mousedown fires before CM6 focus handling)
+		// Render based on display mode
+		const mode = this.store.getSettings().chipDisplayMode;
+		if (mode === ChipDisplayMode.Dot) {
+			span.className = "mlw-chip mlw-chip--dot";
+			span.title = fullText;
+		} else if (mode === ChipDisplayMode.Compact) {
+			span.className = "mlw-chip mlw-chip--compact";
+			span.textContent = (task.status === TaskStatus.Inbox && task.area_of_focus === "")
+				? "\u{1F4E5}" : (task.area_of_focus || "Tracked");
+			span.title = fullText;
+		} else {
+			span.className = "mlw-chip";
+			span.textContent = fullText;
+		}
+
+		// Mousedown: modifier+click cycles mode, plain click opens editor
 		span.addEventListener("mousedown", (e) => {
 			e.preventDefault();
 			e.stopPropagation();
+			const settings = this.store.getSettings();
+			const mod = settings.chipCycleModifier === "shift" ? e.shiftKey : e.ctrlKey;
+			if (mod) {
+				this.store.updateSettings({ chipDisplayMode: nextChipDisplayMode(settings.chipDisplayMode) });
+				view.dispatch({});
+				return;
+			}
 			const current = this.store.getTask(this.taskId);
 			if (current === undefined) return;
-			const taskText = this.extractTaskText(view);
-			MetadataEditor.open(current, taskText, span.getBoundingClientRect(), this.store, view);
+			MetadataEditor.open(current, this.extractTaskText(view), span.getBoundingClientRect(), this.store, view);
 		});
 
 		return span;

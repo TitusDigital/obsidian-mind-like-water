@@ -3,6 +3,7 @@ import type MindLikeWaterPlugin from "main";
 import {
 	type AreaOfFocus,
 	CaptureLocation,
+	ChipDisplayMode,
 	DEFAULT_AOF_COLORS,
 	FALLBACK_AOF_COLOR,
 	deriveAOFColor,
@@ -33,42 +34,23 @@ export class MLWSettingTab extends PluginSettingTab {
 
 	private renderGeneralSettings(containerEl: HTMLElement): void {
 		new Setting(containerEl).setName("General").setHeading();
+		const s = this.plugin.store.getSettings();
+		const upd = (p: Parameters<typeof this.plugin.store.updateSettings>[0]) => this.plugin.store.updateSettings(p);
 
-		new Setting(containerEl)
-			.setName("Project folder")
-			.setDesc("Vault folder where project files are stored.")
-			.addText(text => text
-				.setPlaceholder("MLW/Projects")
-				.setValue(this.plugin.store.getSettings().projectFolder)
-				.onChange(value => {
-					this.plugin.store.updateSettings({ projectFolder: value });
-				})
-			);
-
-		new Setting(containerEl)
-			.setName("Capture location")
-			.setDesc("Where Quick Capture places new tasks.")
-			.addDropdown(dropdown => dropdown
-				.addOption(CaptureLocation.DailyNote, "Daily note")
-				.addOption(CaptureLocation.InboxFile, "Inbox file")
-				.setValue(this.plugin.store.getSettings().captureLocation)
-				.onChange(value => {
-					this.plugin.store.updateSettings({
-						captureLocation: value as CaptureLocation,
-					});
-				})
-			);
-
-		new Setting(containerEl)
-			.setName("Inbox file")
-			.setDesc("File for captured tasks when not using daily notes.")
-			.addText(text => text
-				.setPlaceholder("MLW/Inbox.md")
-				.setValue(this.plugin.store.getSettings().inboxFile)
-				.onChange(value => {
-					this.plugin.store.updateSettings({ inboxFile: value });
-				})
-			);
+		new Setting(containerEl).setName("Project folder").setDesc("Vault folder where project files are stored.")
+			.addText(t => t.setPlaceholder("MLW/Projects").setValue(s.projectFolder).onChange(v => upd({ projectFolder: v })));
+		new Setting(containerEl).setName("Capture location").setDesc("Where Quick Capture places new tasks.")
+			.addDropdown(d => d.addOption(CaptureLocation.DailyNote, "Daily note").addOption(CaptureLocation.InboxFile, "Inbox file")
+				.setValue(s.captureLocation).onChange(v => upd({ captureLocation: v as CaptureLocation })));
+		new Setting(containerEl).setName("Inbox file").setDesc("File for captured tasks when not using daily notes.")
+			.addText(t => t.setPlaceholder("MLW/Inbox.md").setValue(s.inboxFile).onChange(v => upd({ inboxFile: v })));
+		new Setting(containerEl).setName("Chip display mode").setDesc("Detail level for inline task chips in the editor.")
+			.addDropdown(d => d.addOption(ChipDisplayMode.Full, "Full (all metadata)").addOption(ChipDisplayMode.Compact, "Compact (AOF only)")
+				.addOption(ChipDisplayMode.Dot, "Dot (colored circle)").setValue(s.chipDisplayMode)
+				.onChange(v => { upd({ chipDisplayMode: v as ChipDisplayMode }); this.plugin.refreshEditorChips(); }));
+		new Setting(containerEl).setName("Chip cycle modifier").setDesc("Hold this key and click a chip to cycle display mode.")
+			.addDropdown(d => d.addOption("ctrl", "Ctrl+click").addOption("shift", "Shift+click")
+				.setValue(s.chipCycleModifier).onChange(v => upd({ chipCycleModifier: v as "ctrl" | "shift" })));
 	}
 
 	private renderAreasOfFocus(containerEl: HTMLElement): void {
