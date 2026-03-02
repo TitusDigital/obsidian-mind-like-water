@@ -77,6 +77,14 @@ Any checkbox line in your vault can become a tracked task:
 
 To capture a thought without navigating to a file, press `Ctrl+Shift+Q`. The quick capture modal lets you type a task name and hit Enter. It lands in your Inbox (either appended to your daily note or a dedicated inbox file, depending on settings).
 
+**Chip display modes** — The inline chip next to each tracked task has three display options, configurable in Settings → Mind Like Water → Chip Display:
+
+- **Full** — shows all metadata (status and area of focus label)
+- **Compact** — area of focus only
+- **Dot** — minimal colored circle, for a cleaner editing experience
+
+You can also cycle through modes by holding the modifier key (configurable) and clicking any chip, or by running the "Cycle chip display mode" command.
+
 ### The Sidebar
 
 Click the water drop icon in the left ribbon (or run the "Open Mind Like Water" command) to open the sidebar. Eight tabs organize your tasks by GTD stage:
