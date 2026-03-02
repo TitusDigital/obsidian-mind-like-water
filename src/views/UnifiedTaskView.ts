@@ -9,6 +9,7 @@ import { renderReview } from "views/ReviewTab";
 import { type Bucket, bucketByDate, localToday } from "views/DateUtils";
 import { buildToolbar } from "views/Toolbar";
 import { runIntegrityCheck, type IntegrityReport } from "services/IntegrityChecker";
+import { TaskReorder } from "components/TaskReorder";
 
 type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects" | "review";
 const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects", "review"];
@@ -34,6 +35,7 @@ export class UnifiedTaskView extends BaseTaskView {
 	private controlsEl!: HTMLElement;
 	private tabBtns = new Map<string, HTMLElement>();
 	private integrityReport: IntegrityReport | null = null;
+	private reorder: TaskReorder | null = null;
 
 	getViewType(): string { return VIEW_TYPE_MLW_UNIFIED; }
 	getDisplayText(): string { return "Mind Like Water"; }
@@ -110,6 +112,7 @@ export class UnifiedTaskView extends BaseTaskView {
 	}
 
 	async renderContent(): Promise<void> {
+		this.reorder?.detach(); this.reorder = null;
 		const gen = ++this.renderGen;
 		this.listEl.empty();
 		switch (this.activeTab) {
@@ -151,6 +154,8 @@ export class UnifiedTaskView extends BaseTaskView {
 				this.renderCompletedRow(task, text, task.completed_date !== null ? [this.formatDate(task.completed_date)] : []);
 			}
 		}
+		this.reorder = new TaskReorder(this.listEl, this.store, (l) => this.setReorderLock(l));
+		this.reorder.attach();
 	}
 
 	private async renderInbox(gen: number): Promise<void> {
@@ -194,6 +199,8 @@ export class UnifiedTaskView extends BaseTaskView {
 				this.renderCompletedRow(task, text, task.completed_date !== null ? [this.formatDate(task.completed_date)] : []);
 			}
 		}
+		this.reorder = new TaskReorder(this.listEl, this.store, (l) => this.setReorderLock(l));
+		this.reorder.attach();
 	}
 
 	private async renderScheduled(gen: number): Promise<void> {
