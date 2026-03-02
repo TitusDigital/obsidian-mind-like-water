@@ -8,6 +8,7 @@ import {
 	FALLBACK_AOF_COLOR,
 	DEFAULT_DATA,
 	DEFAULT_SETTINGS,
+	DATA_VERSION,
 } from "data/models";
 import { readAllProjects } from "data/ProjectReader";
 import { onTaskCompleted } from "services/RecurrenceService";
@@ -36,6 +37,7 @@ export class DataStore {
 		if (raw !== null && raw !== undefined && typeof raw === "object") {
 			const loaded = raw as Partial<MLWData>;
 			this.data = {
+				dataVersion: DATA_VERSION,
 				tasks: (loaded.tasks as Record<string, Task> | undefined) ?? {},
 				settings: { ...DEFAULT_SETTINGS, ...(loaded.settings ?? {}) },
 			};

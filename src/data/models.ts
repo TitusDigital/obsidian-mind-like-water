@@ -112,8 +112,12 @@ export interface MLWSettings {
 	recurrencePausedAt: string | null;
 }
 
+/** Current data schema version. Increment when adding fields that need migration. */
+export const DATA_VERSION = 1;
+
 /** The complete structure persisted to data.json */
 export interface MLWData {
+	dataVersion: number;
 	tasks: Record<string, Task>;
 	settings: MLWSettings;
 }
@@ -153,6 +157,7 @@ export const DEFAULT_SETTINGS: MLWSettings = {
 };
 
 export const DEFAULT_DATA: MLWData = {
+	dataVersion: DATA_VERSION,
 	tasks: {},
 	settings: { ...DEFAULT_SETTINGS },
 };
