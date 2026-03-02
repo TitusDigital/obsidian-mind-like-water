@@ -1,90 +1,88 @@
-# Obsidian Sample Plugin
+# Mind Like Water
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+GTD-powered task management for [Obsidian](https://obsidian.md). Track tasks inline, organize by Areas of Focus, manage projects, and run weekly reviews — all without leaving your vault.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Features
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+**Inline Task Tracking** — Add a `<!-- mlw:abc123 -->` comment to any checkbox to track it. Use `Ctrl+Shift+T` to track the current line, or `Ctrl+Shift+Q` for quick capture from anywhere.
 
-## First time developing plugins?
+**GTD Workflow** — Tasks flow through a natural lifecycle: Inbox → Next Action → Scheduled → Someday/Maybe → Completed. Scheduled tasks auto-transition to Next Actions when their start date arrives.
 
-Quick starting guide for new plugin devs:
+**Unified Sidebar View** — Seven tabs in a single panel:
+- **Focus** — Starred tasks and items due today
+- **Next Actions** — Active tasks grouped by Area of Focus, project, or context
+- **Scheduled** — Future tasks bucketed by time horizon
+- **Someday** — Low-priority items for later
+- **Projects** — Project cards with outcomes and task counts
+- **Completed** — Recently finished tasks
+- **Review** — Weekly review checklist with actionable prompts
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+**Areas of Focus** — Color-coded life areas (Work, Health, Finance, etc.) with per-area filtering across all views.
 
-## Releasing new releases
+**Projects** — Markdown-based projects with YAML frontmatter. Each project has a successful outcome, status, and associated tasks. Create projects directly from the metadata editor.
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+**Recurring Tasks** — Two recurrence models:
+- **Fixed schedule** — tasks appear on calendar dates (e.g., "every Thursday")
+- **Relative** — next instance spawns N days/weeks after completion
+- Supports end conditions (count, until date), pause/resume, and recurrence history
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+**Metadata Editor** — Click any task chip in the editor (or `Ctrl+click` a task in the sidebar) to open a popover with all task fields: status, area, project, dates, energy, context, recurrence, and star.
 
-## Adding your plugin to the community plugin list
+**Calendar Date Picker** — Custom dropdown calendar for start and due dates with month navigation, today shortcut, and clear button.
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+**Task Reordering** — Drag-and-drop or keyboard (Alt+Arrow) reordering in Focus and Next Actions views. Order persists across sessions.
 
-## How to use
+**Three-State Filters** — Filter chips cycle through off → include → exclude. Filter by energy, context, or area with AND/OR logic.
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+**Codeblock Embeds** — Embed task lists in any note:
+- `` ```mlw-focus``` `` — Focus list
+- `` ```mlw-completed``` `` — Completed tasks
+- `` ```mlw-project-tasks``` `` — Tasks for the current project
 
-## Manually installing the plugin
+**Nirvana Import** — One-click migration from Nirvana (JSON export) with project creation, area mapping, and context preservation.
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+## Installation
 
-## Improve code quality with eslint
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+### From Community Plugins (recommended)
+1. Open Settings → Community Plugins → Browse
+2. Search for "Mind Like Water"
+3. Click Install, then Enable
 
-## Funding URL
+### Manual Installation
+1. Download `main.js`, `styles.css`, and `manifest.json` from the [latest release](https://github.com/TitusDigital/obsidian-mind-like-water/releases)
+2. Create a folder at `.obsidian/plugins/mind-like-water/` in your vault
+3. Copy the three files into that folder
+4. Reload Obsidian and enable the plugin in Settings → Community Plugins
 
-You can include funding URLs where people who use your plugin can financially support it.
+## Quick Start
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+1. **Track a task** — On any checkbox line (`- [ ] My task`), press `Ctrl+Shift+T`. A colored chip appears showing the task is tracked.
+2. **Quick capture** — Press `Ctrl+Shift+Q` to capture a task from anywhere. It goes to your Inbox.
+3. **Open the sidebar** — Click the water drop icon in the ribbon, or use the "Open Mind Like Water" command.
+4. **Clarify** — Click a task chip to open the metadata editor. Set area of focus, project, dates, and status.
+5. **Review** — Use the Review tab weekly to process your inbox, check stale tasks, and mark the review complete.
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
+## Keyboard Shortcuts
 
-If you have multiple URLs, you can also do:
+| Shortcut | Action |
+|---|---|
+| `Ctrl+Shift+T` | Track the current checkbox line |
+| `Ctrl+Shift+Q` | Quick capture a new task |
+| `Ctrl+click` | Open metadata editor from sidebar |
+| `Alt+Up/Down` | Reorder tasks (when grip handle selected) |
+| `Escape` | Close popover / deselect |
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+## Configuration
 
-## API Documentation
+Open Settings → Mind Like Water to configure:
 
-See https://docs.obsidian.md
+- **Areas of Focus** — Add, remove, reorder, and color-code your life areas
+- **Project Folder** — Where project markdown files are stored (default: `MLW/Projects`)
+- **Capture Location** — Quick capture to daily note or dedicated inbox file
+- **Chip Display** — Full, compact, or dot mode for inline chips
+- **Contexts** — Define contexts (e.g., @home, @office, @errands) for filtering
+- **Data Backup** — Auto-backup data.json on load
+
+## License
+
+[0-BSD](LICENSE) — James Titus
