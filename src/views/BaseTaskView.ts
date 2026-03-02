@@ -132,9 +132,10 @@ export abstract class BaseTaskView extends ItemView {
 		const item = this.listEl.createDiv(cls);
 		item.dataset.taskId = task.id;
 
-		// Star toggle (subtle)
 		const star = item.createDiv({ cls: `mlw-view-item__star${showStarred ? " mlw-view-item__star--active" : ""}` });
 		star.textContent = showStarred ? "\u2605" : "\u2606";
+		star.setAttribute("role", "button");
+		star.ariaLabel = showStarred ? "Unstar task" : "Star task";
 		star.addEventListener("click", (e) => {
 			e.stopPropagation();
 			if (dueForced && !task.starred) { new Notice("This task is starred because it's due today or overdue."); return; }
@@ -142,9 +143,10 @@ export abstract class BaseTaskView extends ItemView {
 			this.store.updateTask(task.id, { starred: !task.starred });
 		});
 
-		// Complete checkbox (circle, accent-styled when starred)
 		const checkCls = showStarred ? "mlw-view-item__check mlw-view-item__check--starred" : "mlw-view-item__check";
 		const check = item.createDiv(checkCls);
+		check.setAttribute("role", "button");
+		check.ariaLabel = "Complete task";
 		check.addEventListener("click", (e) => { e.stopPropagation(); void this.completeTaskFromView(task); });
 
 		item.createDiv({ text, cls: "mlw-view-item__text" });

@@ -92,17 +92,19 @@ class CalendarPicker {
 		// Dropdown
 		this.dropdown = document.createElement("div");
 		this.dropdown.className = "mlw-cal";
-
-		// Header
+		this.dropdown.setAttribute("role", "dialog");
+		this.dropdown.ariaLabel = "Date picker";
 		const header = document.createElement("div");
 		header.className = "mlw-cal__header";
 		const prevBtn = document.createElement("button");
 		prevBtn.className = "mlw-cal__nav";
 		prevBtn.textContent = "\u25C0";
+		prevBtn.ariaLabel = "Previous month";
 		prevBtn.addEventListener("click", () => this.navigate(-1));
 		const nextBtn = document.createElement("button");
 		nextBtn.className = "mlw-cal__nav";
 		nextBtn.textContent = "\u25B6";
+		nextBtn.ariaLabel = "Next month";
 		nextBtn.addEventListener("click", () => this.navigate(1));
 		this.titleEl = document.createElement("span");
 		this.titleEl.className = "mlw-cal__title";

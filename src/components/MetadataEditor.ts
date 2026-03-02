@@ -43,6 +43,8 @@ export class MetadataEditor {
 		this.backdrop = this.el("div", "mlw-popover-backdrop");
 		this.backdrop.addEventListener("mousedown", (e) => { if (e.target === this.backdrop) this.close(); });
 		this.popover = this.el("div", "mlw-editor-popover");
+		this.popover.setAttribute("role", "dialog");
+		this.popover.ariaLabel = "Edit task metadata";
 		this.popover.addEventListener("keydown", (e) => this.handleKeyDown(e));
 		this.backdrop.appendChild(this.popover);
 		this.popover.append(this.buildHeader(), this.buildPreview(), this.buildFields(), this.buildFooter());
@@ -81,6 +83,8 @@ export class MetadataEditor {
 		dot.style.backgroundColor = this.getAOFColor(this.task.area_of_focus).text;
 		header.append(dot, this.el("span", "mlw-editor-header__title", "Edit Task"));
 		const close = this.el("span", "mlw-editor-header__close", "\u00D7");
+		close.setAttribute("role", "button");
+		close.ariaLabel = "Close editor";
 		close.addEventListener("click", () => this.close());
 		header.appendChild(close);
 		return header;
