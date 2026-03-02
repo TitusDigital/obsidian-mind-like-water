@@ -30,7 +30,7 @@ export async function runNirvanaImport(
 	const aofNames = settings.areasOfFocus.map(a => a.name);
 	const projectFolder = normalizePath(settings.projectFolder);
 
-	// ── Phase 0: Create AOFs from user-selected area tags ────────
+	// Phase 0: Create AOFs from user-selected area tags
 	const existingAOFs = new Set(aofNames.map(n => n.toLowerCase()));
 	const newAOFs = (options.selectedAreaTags ?? []).filter(t => !existingAOFs.has(t.toLowerCase()));
 	if (newAOFs.length > 0) {
@@ -44,7 +44,7 @@ export async function runNirvanaImport(
 		aofNames.push(...newAOFs);
 	}
 
-	// ── Phase 1: Create project files ────────────────────────────
+	// Phase 1: Create project files
 	const projectMap = new Map<string, ProjectInfo>();
 	const projects = items.filter(i => {
 		if (i.type !== NirvanaType.Project) return false;
@@ -80,7 +80,7 @@ export async function runNirvanaImport(
 		if (idx % 5 === 0) await yieldToUI();
 	}
 
-	// ── Phase 2: Filter and prepare tasks ────────────────────────
+	// Phase 2: Filter and prepare tasks
 	const taskItems = items.filter(i => {
 		if (i.type !== NirvanaType.Task) return false;
 		if (i.state === NirvanaState.RecurringTemplate || i.state === NirvanaState.Reference) return false;
@@ -112,7 +112,7 @@ export async function runNirvanaImport(
 	const dedupedActive = deduplicateRecurring(standaloneActive);
 	result.tasksSkipped += standaloneActive.length - dedupedActive.length;
 
-	// ── Phase 3–4: Write standalone tasks ─────────────────────────
+	// Phase 3–4: Write standalone tasks
 	const importPath = normalizePath("MLW/Nirvana Import.md");
 	if (dedupedActive.length > 0) {
 		onProgress({ phase: "Importing active tasks", current: 0, total: dedupedActive.length });
@@ -124,7 +124,7 @@ export async function runNirvanaImport(
 		await writeTaskFile(app, store, completedPath, standaloneCompleted, aofNames, true, onProgress, result);
 	}
 
-	// ── Phase 5: Append tasks to project files ───────────────────
+	// Phase 5: Append tasks to project files
 	let projIdx = 0, projTotal = projectTasks.size;
 	for (const [projId, tasks] of projectTasks) {
 		projIdx++;
@@ -140,7 +140,7 @@ export async function runNirvanaImport(
 		if (projIdx % 3 === 0) await yieldToUI();
 	}
 
-	// ── Phase 6: Auto-add new contexts to settings ───────────────
+	// Phase 6: Auto-add new contexts to settings
 	const ctxSet = new Set(settings.contexts.map(c => c.toLowerCase()));
 	const newCtx: string[] = [];
 	for (const item of taskItems) {
@@ -278,26 +278,17 @@ function groupByStatus(items: NirvanaItem[]): { header: string; items: NirvanaIt
 
 function deduplicateRecurring(items: NirvanaItem[]): NirvanaItem[] {
 	const byName = new Map<string, NirvanaItem[]>();
-	for (const item of items) {
-		const group = byName.get(item.name) ?? [];
-		group.push(item);
-		byName.set(item.name, group);
-	}
+	for (const item of items) { (byName.get(item.name) ?? (byName.set(item.name, []), byName.get(item.name)!)).push(item); }
 	const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 	const result: NirvanaItem[] = [];
 	for (const [, group] of byName) {
-		if (group.length === 1 || !group.every(i => i.duedate.length === 8)) {
-			result.push(...group);
-		} else {
-			// Pick the nearest future due date, or most recent past if all overdue
+		if (group.length === 1 || !group.every(i => i.duedate.length === 8)) { result.push(...group); }
+		else {
 			const sorted = group.sort((a, b) => a.duedate.localeCompare(b.duedate));
-			const next = sorted.find(i => i.duedate >= today) ?? sorted[sorted.length - 1]!;
-			result.push(next);
+			result.push(sorted.find(i => i.duedate >= today) ?? sorted[sorted.length - 1]!);
 		}
 	}
 	return result;
 }
 
-function yieldToUI(): Promise<void> {
-	return new Promise(resolve => setTimeout(resolve, 0));
-}
+function yieldToUI(): Promise<void> { return new Promise(resolve => setTimeout(resolve, 0)); }

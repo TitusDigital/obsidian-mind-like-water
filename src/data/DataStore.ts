@@ -30,8 +30,6 @@ export class DataStore {
 	/** Expose the Obsidian App for services that need vault access. */
 	get app(): App { return this.plugin.app; }
 
-	// ── Initialization ──────────────────────────────────────────────
-
 	/** Load data.json, merge with defaults, optionally create backup. */
 	async load(): Promise<void> {
 		const raw: unknown = await this.plugin.loadData();
@@ -69,29 +67,15 @@ export class DataStore {
 		} catch (e) { console.warn("MLW: Failed to create backup", e); }
 	}
 
-	// ── Persistence ─────────────────────────────────────────────────
-
-	/** Schedule a debounced save. Multiple rapid calls coalesce into one write. */
 	private scheduleSave(): void {
-		if (this.saveTimeout !== null) {
-			clearTimeout(this.saveTimeout);
-		}
-		this.saveTimeout = setTimeout(() => {
-			this.saveTimeout = null;
-			void this.plugin.saveData(this.data);
-		}, SAVE_DEBOUNCE_MS);
+		if (this.saveTimeout !== null) clearTimeout(this.saveTimeout);
+		this.saveTimeout = setTimeout(() => { this.saveTimeout = null; void this.plugin.saveData(this.data); }, SAVE_DEBOUNCE_MS);
 	}
 
-	/** Force an immediate save (used during plugin unload). */
 	async saveImmediate(): Promise<void> {
-		if (this.saveTimeout !== null) {
-			clearTimeout(this.saveTimeout);
-			this.saveTimeout = null;
-		}
+		if (this.saveTimeout !== null) { clearTimeout(this.saveTimeout); this.saveTimeout = null; }
 		await this.plugin.saveData(this.data);
 	}
-
-	// ── Change Notification ─────────────────────────────────────────
 
 	/** Register a callback invoked after any task create/update/delete. */
 	setOnChange(callback: () => void): void {
@@ -108,8 +92,6 @@ export class DataStore {
 		for (const fn of this.onChangeCallbacks) fn();
 	}
 
-	// ── ID Generation ───────────────────────────────────────────────
-
 	/** Generate a unique 6-char alphanumeric ID. */
 	generateId(): string {
 		let id: string;
@@ -121,8 +103,6 @@ export class DataStore {
 		} while (id in this.data.tasks);
 		return id;
 	}
-
-	// ── Task CRUD ───────────────────────────────────────────────────
 
 	/** Create a new task. Caller may supply a pre-generated `id`. Returns the created task. */
 	createTask(fields: Partial<Omit<Task, "created" | "modified">> & {
@@ -202,8 +182,6 @@ export class DataStore {
 		return true;
 	}
 
-	// ── Settings ────────────────────────────────────────────────────
-
 	/** Get the current settings. */
 	getSettings(): MLWSettings {
 		return this.data.settings;
@@ -214,8 +192,6 @@ export class DataStore {
 		Object.assign(this.data.settings, partial);
 		this.scheduleSave();
 	}
-
-	// ── Utilities ───────────────────────────────────────────────────
 
 	/** Get the next sort_order value (max + 1, or 0 if empty). */
 	private getNextSortOrder(): number {
@@ -252,8 +228,6 @@ export class DataStore {
 		return aof?.color ?? FALLBACK_AOF_COLOR;
 	}
 
-	// ── Projects ────────────────────────────────────────────────────
-
 	/** Get project titles whose frontmatter area_of_focus matches the given AOF. */
 	getProjectsForAOF(aof: string): string[] {
 		const projects = readAllProjects(this.plugin.app, this.data.settings.projectFolder);
@@ -287,36 +261,11 @@ export class DataStore {
 	/** Create a new project markdown file with frontmatter. */
 	async createProjectFile(aof: string, name: string, outcome: string, status = "active"): Promise<void> {
 		const folder = normalizePath(this.data.settings.projectFolder);
-		const exists = await this.plugin.app.vault.adapter.exists(folder);
-		if (!exists) {
+		if (!(await this.plugin.app.vault.adapter.exists(folder))) {
 			await this.plugin.app.vault.createFolder(folder);
 		}
-		const filePath = normalizePath(`${folder}/${name}.md`);
 		const now = new Date().toISOString();
-		const content = [
-			"---",
-			"mlw_type: project",
-			`title: "${name}"`,
-			`status: ${status}`,
-			`area_of_focus: "${aof}"`,
-			`successful_outcome: "${outcome}"`,
-			"sort_order: 0",
-			`created: ${now}`,
-			`modified: ${now}`,
-			"---",
-			"",
-			"## Successful Outcome",
-			"",
-			outcome,
-			"",
-			"## Tasks",
-			"",
-			"```mlw-project-tasks",
-			"```",
-			"",
-			"## Notes",
-			"",
-		].join("\n");
-		await this.plugin.app.vault.create(filePath, content);
+		const content = `---\nmlw_type: project\ntitle: "${name}"\nstatus: ${status}\narea_of_focus: "${aof}"\nsuccessful_outcome: "${outcome}"\nsort_order: 0\ncreated: ${now}\nmodified: ${now}\n---\n\n## Successful Outcome\n\n${outcome}\n\n## Tasks\n\n\`\`\`mlw-project-tasks\n\`\`\`\n\n## Notes\n\n`;
+		await this.plugin.app.vault.create(normalizePath(`${folder}/${name}.md`), content);
 	}
 }
