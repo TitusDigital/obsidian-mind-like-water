@@ -6,10 +6,13 @@ interface DailyNotesConfig {
 	format: string;
 }
 
+interface InternalPlugins {
+	getPluginById?: (id: string) => { enabled: boolean; instance?: { options?: Record<string, unknown> } } | null;
+}
+
 /** Read the core daily-notes plugin config. Returns null if disabled. */
 function getDailyNotesConfig(app: App): DailyNotesConfig | null {
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	const internal = (app as any).internalPlugins;
+	const internal = (app as unknown as { internalPlugins?: InternalPlugins }).internalPlugins;
 	if (internal === undefined) return null;
 	const plugin = internal.getPluginById?.("daily-notes");
 	if (plugin === undefined || plugin === null || !plugin.enabled) return null;

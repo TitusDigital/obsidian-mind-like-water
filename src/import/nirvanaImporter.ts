@@ -1,4 +1,4 @@
-import { normalizePath, type App } from "obsidian";
+import { normalizePath, TFile, type App } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import { deriveAOFColor } from "data/models";
 import { NirvanaType, NirvanaState, type NirvanaItem, type ImportOptions, type ImportResult, type ImportProgress } from "./nirvanaTypes";
@@ -219,9 +219,9 @@ async function appendToProjectFile(
 	items: NirvanaItem[], aofNames: string[], result: ImportResult,
 ): Promise<void> {
 	const file = app.vault.getAbstractFileByPath(proj.filePath);
-	if (file === null) return;
+	if (!(file instanceof TFile)) return;
 
-	const content = await app.vault.read(file as any);
+	const content = await app.vault.read(file);
 	const lines = content.split("\n");
 
 	// Find insertion point: before "## Notes" or at end
@@ -247,7 +247,7 @@ async function appendToProjectFile(
 	newLines.push("");
 
 	lines.splice(insertIdx, 0, ...newLines);
-	await app.vault.modify(file as any, lines.join("\n"));
+	await app.vault.modify(file, lines.join("\n"));
 
 	for (const { offset, id, item } of entries) {
 		const prepared = prepareTask(item, aofNames);

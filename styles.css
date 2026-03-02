@@ -21,7 +21,7 @@
 .mlw-chip:hover { filter: brightness(1.2); }
 .mlw-chip--unknown {
 	background: rgba(150, 150, 150, 0.15);
-	color: #A0A0A0;
+	color: var(--text-faint);
 	border-color: rgba(150, 150, 150, 0.3);
 }
 .mlw-chip--compact { padding: 2px 8px; }
@@ -42,7 +42,7 @@
 	font-size: 11px;
 	font-family: var(--font-monospace);
 	background: rgba(108, 112, 134, 0.1);
-	color: #585B70;
+	color: var(--text-faint);
 	border: 1px dashed rgba(108, 112, 134, 0.25);
 	cursor: pointer;
 	vertical-align: middle;
@@ -52,7 +52,7 @@
 }
 .mlw-track-btn:hover {
 	background: rgba(137, 180, 250, 0.2);
-	color: #89B4FA;
+	color: var(--interactive-accent);
 	border-color: rgba(137, 180, 250, 0.4);
 }
 
@@ -378,8 +378,8 @@
 	flex-shrink: 0; cursor: pointer; font-size: 12px; line-height: 1;
 	color: var(--text-faint); opacity: 0.3; transition: opacity 0.15s ease, color 0.15s ease;
 }
-.mlw-view-item__star:hover { color: #E8AE5C; opacity: 1; }
-.mlw-view-item__star--active { color: #E8AE5C; opacity: 1; }
+.mlw-view-item__star:hover { color: var(--text-warning, #E8AE5C); opacity: 1; }
+.mlw-view-item__star--active { color: var(--text-warning, #E8AE5C); opacity: 1; }
 .mlw-view-item__check {
 	width: 16px; height: 16px; border: 1.5px solid var(--text-faint); border-radius: 50%;
 	flex-shrink: 0; cursor: pointer; transition: all 0.15s ease;
@@ -437,12 +437,12 @@
 /* ── Light theme overrides ────────────────────────────── */
 .theme-light .mlw-track-btn {
 	background: rgba(108, 112, 134, 0.08);
-	color: #6C7086;
+	color: var(--text-faint);
 	border-color: rgba(108, 112, 134, 0.2);
 }
 .theme-light .mlw-track-btn:hover {
 	background: rgba(30, 102, 245, 0.12);
-	color: #1E66F5;
+	color: var(--interactive-accent);
 	border-color: rgba(30, 102, 245, 0.3);
 }
 .theme-light .mlw-editor-popover { box-shadow: 0 12px 36px rgba(0, 0, 0, 0.15); }
