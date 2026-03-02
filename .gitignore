@@ -15,10 +15,13 @@ main.js
 data.json
 data.json.bak
 
-# Test vault content
-MLW/
-Journal/
+# Test vault content (root-level only)
+/MLW/
+/Journal/
 *.pdf
+
+# Allow demo vault MLW folder
+!demo-vault/MLW/
 
 # AI / tooling
 AGENTS.md
