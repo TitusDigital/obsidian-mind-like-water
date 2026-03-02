@@ -11,7 +11,7 @@
 		"test": "vitest run",
 		"lint": "eslint ."
 	},
-	"keywords": [],
+	"keywords": ["obsidian", "gtd", "task-management", "productivity"],
 	"license": "0-BSD",
 	"devDependencies": {
 		"@codemirror/state": "^6.5.4",

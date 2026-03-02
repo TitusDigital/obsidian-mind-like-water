@@ -5,6 +5,6 @@
 	"minAppVersion": "0.15.0",
 	"description": "GTD-powered task management for Obsidian",
 	"author": "James Titus",
-	"authorUrl": "",
+	"authorUrl": "https://github.com/TitusDigital",
 	"isDesktopOnly": false
 }
