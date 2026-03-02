@@ -2,6 +2,7 @@ import { ItemView, type WorkspaceLeaf, TFile, Notice } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import type { Task } from "data/models";
 import { ViewState, type GroupMode } from "views/ViewState";
+import { localToday } from "views/DateUtils";
 import { getRecurrenceSummary } from "services/RecurrenceService";
 import { RecurrenceHistoryModal } from "components/RecurrenceHistory";
 import { MetadataEditor } from "components/MetadataEditor";
@@ -9,11 +10,6 @@ import { MetadataEditor } from "components/MetadataEditor";
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
 const GROUP_LABELS: [GroupMode, string][] = [["aof", "Area"], ["project", "Project"], ["context", "Context"], ["none", "Flat"]];
-
-function localToday(): string {
-	const d = new Date();
-	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 /** Configuration returned by each concrete view. */
 export interface ViewConfig {
@@ -31,6 +27,8 @@ export abstract class BaseTaskView extends ItemView {
 	protected unsubscribeViewState: (() => void) | null = null;
 	protected renderGen = 0;
 	private refreshTimer: ReturnType<typeof setTimeout> | null = null;
+	private reorderLocked = false;
+	private pendingRefresh = false;
 
 	constructor(leaf: WorkspaceLeaf, protected readonly store: DataStore) {
 		super(leaf);
@@ -67,11 +65,14 @@ export abstract class BaseTaskView extends ItemView {
 
 	/** Called by the plugin when tasks change. Debounced to coalesce rapid updates. */
 	refresh(): void {
+		if (this.reorderLocked) { this.pendingRefresh = true; return; }
 		if (this.refreshTimer !== null) clearTimeout(this.refreshTimer);
-		this.refreshTimer = setTimeout(() => {
-			this.refreshTimer = null;
-			void this.renderContent();
-		}, 50);
+		this.refreshTimer = setTimeout(() => { this.refreshTimer = null; void this.renderContent(); }, 50);
+	}
+
+	setReorderLock(locked: boolean): void {
+		this.reorderLocked = locked;
+		if (!locked && this.pendingRefresh) { this.pendingRefresh = false; this.refresh(); }
 	}
 
 	// ── Shared rendering helpers ──────────────────────────────────
@@ -129,6 +130,7 @@ export abstract class BaseTaskView extends ItemView {
 		const showStarred = task.starred || dueForced;
 		const cls = showStarred ? "mlw-view-item mlw-view-item--starred" : "mlw-view-item";
 		const item = this.listEl.createDiv(cls);
+		item.dataset.taskId = task.id;
 
 		// Star toggle (subtle)
 		const star = item.createDiv({ cls: `mlw-view-item__star${showStarred ? " mlw-view-item__star--active" : ""}` });

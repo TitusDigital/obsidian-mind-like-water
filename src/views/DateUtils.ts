@@ -1,5 +1,11 @@
 import type { Task } from "data/models";
 
+/** Get today's date as YYYY-MM-DD in local time. */
+export function localToday(): string {
+	const d = new Date();
+	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export type Bucket = "Overdue" | "Today" | "This Week" | "Next Week" | "This Month" | "Later" | "No Date";
 
 function stripTime(d: Date): Date { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }

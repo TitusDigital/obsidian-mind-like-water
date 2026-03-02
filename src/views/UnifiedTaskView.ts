@@ -6,14 +6,9 @@ import { FilterBar } from "views/FilterBar";
 import { ViewState } from "views/ViewState";
 import { renderProjects } from "views/ProjectsTab";
 import { renderReview } from "views/ReviewTab";
-import { type Bucket, bucketByDate } from "views/DateUtils";
+import { type Bucket, bucketByDate, localToday } from "views/DateUtils";
 import { buildToolbar } from "views/Toolbar";
 import { runIntegrityCheck, type IntegrityReport } from "services/IntegrityChecker";
-
-function localToday(): string {
-	const d = new Date();
-	return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects" | "review";
 const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects", "review"];
