@@ -394,6 +394,31 @@
 .mlw-view-item--completed { opacity: 0.6; }
 .mlw-view-item--completed .mlw-view-item__text { text-decoration: line-through; }
 
+/* ── Task Reorder ────────────────────────────────────── */
+.mlw-view-item__grip {
+	flex-shrink: 0; width: 16px; cursor: grab; color: var(--text-faint);
+	font-size: 12px; text-align: center; opacity: 0;
+	transition: opacity 0.15s ease; user-select: none;
+}
+.mlw-view-item:hover .mlw-view-item__grip { opacity: 0.5; }
+.mlw-view-item__grip:hover { opacity: 1 !important; color: var(--text-muted); }
+.mlw-view-item__grip:active { cursor: grabbing; }
+.mlw-view-item--dragging { opacity: 0.4; background: var(--background-secondary-alt); }
+.mlw-view-item--selected {
+	background: var(--background-secondary-alt);
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: -2px; border-radius: 6px;
+}
+.mlw-reorder-indicator {
+	height: 2px; background: var(--interactive-accent);
+	border-radius: 1px; margin: 0 16px; pointer-events: none;
+}
+@keyframes mlw-reorder-flash {
+	0% { background: var(--background-secondary-alt); }
+	100% { background: transparent; }
+}
+.mlw-view-item--moved { animation: mlw-reorder-flash 0.4s ease-out; }
+
 /* ── Ribbon Badge ────────────────────────────────────── */
 .mlw-ribbon-inbox { position: relative; }
 .mlw-ribbon-badge {
