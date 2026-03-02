@@ -22,20 +22,22 @@ function getDailyNotesConfig(app: App): DailyNotesConfig | null {
 
 /** Ensure today's daily note exists, return the TFile. Null if plugin disabled. */
 async function ensureTodaysDailyNote(app: App): Promise<TFile | null> {
-	const config = getDailyNotesConfig(app);
-	if (config === null) return null;
-
-	const dateStr = moment().format(config.format || "YYYY-MM-DD");
-	const folder = config.folder ? normalizePath(config.folder) : "";
-	const filePath = normalizePath(folder ? `${folder}/${dateStr}.md` : `${dateStr}.md`);
-
-	const existing = app.vault.getAbstractFileByPath(filePath);
-	if (existing instanceof TFile) return existing;
-
-	if (folder && !(await app.vault.adapter.exists(folder))) {
-		await app.vault.createFolder(folder);
+	try {
+		const config = getDailyNotesConfig(app);
+		if (config === null) return null;
+		const dateStr = moment().format(config.format || "YYYY-MM-DD");
+		const folder = config.folder ? normalizePath(config.folder) : "";
+		const filePath = normalizePath(folder ? `${folder}/${dateStr}.md` : `${dateStr}.md`);
+		const existing = app.vault.getAbstractFileByPath(filePath);
+		if (existing instanceof TFile) return existing;
+		if (folder && !(await app.vault.adapter.exists(folder))) {
+			await app.vault.createFolder(folder);
+		}
+		return await app.vault.create(filePath, "");
+	} catch (e) {
+		console.error("MLW: Failed to create daily note", e);
+		return null;
 	}
-	return await app.vault.create(filePath, "");
 }
 
 /** Ensure a file exists at the given path, creating it (with parent dirs) if needed. */
@@ -43,7 +45,6 @@ async function ensureFile(app: App, filePath: string, initial: string): Promise<
 	const path = normalizePath(filePath);
 	const existing = app.vault.getAbstractFileByPath(path);
 	if (existing instanceof TFile) return existing;
-
 	const folderPath = path.substring(0, path.lastIndexOf("/"));
 	if (folderPath && !(await app.vault.adapter.exists(folderPath))) {
 		await app.vault.createFolder(folderPath);

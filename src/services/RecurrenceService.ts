@@ -20,14 +20,19 @@ function formatLocalDate(date: Date): string {
 	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-// ── End Condition ────────────────────────────────────────────────
-
-function parseRRule(ruleStr: string): RRule {
-	return RRule.fromString(ruleStr.startsWith("RRULE:") ? ruleStr : `RRULE:${ruleStr}`);
+function parseRRule(ruleStr: string): RRule | null {
+	try {
+		return RRule.fromString(ruleStr.startsWith("RRULE:") ? ruleStr : `RRULE:${ruleStr}`);
+	} catch (e) {
+		console.error("MLW: Invalid RRULE", ruleStr, e);
+		return null;
+	}
 }
 
 function hasReachedEndCondition(store: DataStore, tmpl: Task, nextDate?: Date): boolean {
-	const opts = parseRRule(tmpl.recurrence_rule!).origOptions;
+	const rule = parseRRule(tmpl.recurrence_rule!);
+	if (rule === null) return true;
+	const opts = rule.origOptions;
 	if (opts.count != null && tmpl.recurrence_spawn_count >= opts.count) return true;
 	return opts.until != null && nextDate !== undefined && nextDate > opts.until;
 }
@@ -37,26 +42,28 @@ function incrementSpawnCount(store: DataStore, templateId: string): void {
 	if (tmpl !== undefined) store.updateTask(templateId, { recurrence_spawn_count: tmpl.recurrence_spawn_count + 1 });
 }
 
-// ── Markdown Sync ────────────────────────────────────────────────
-
 async function appendCheckboxToFile(
 	store: DataStore, sourceFile: string, taskText: string, newId: string,
 ): Promise<number> {
-	const file = store.app.vault.getAbstractFileByPath(sourceFile);
-	if (!(file instanceof TFile)) { console.warn(`MLW: Source file not found: ${sourceFile}`); return -1; }
-	const content = await store.app.vault.read(file);
-	const lines = content.split("\n");
-	// Find last mlw comment line to group recurring tasks together
-	let insertAfter = -1;
-	for (let i = lines.length - 1; i >= 0; i--) {
-		if (MLW_COMMENT_RE.test(lines[i]!)) { insertAfter = i; break; }
+	try {
+		const file = store.app.vault.getAbstractFileByPath(sourceFile);
+		if (!(file instanceof TFile)) { console.warn(`MLW: Source file not found: ${sourceFile}`); return -1; }
+		const content = await store.app.vault.read(file);
+		const lines = content.split("\n");
+		let insertAfter = -1;
+		for (let i = lines.length - 1; i >= 0; i--) {
+			if (MLW_COMMENT_RE.test(lines[i]!)) { insertAfter = i; break; }
+		}
+		if (insertAfter === -1) insertAfter = lines.length - 1;
+		const insertAt = insertAfter + 1;
+		lines.splice(insertAt, 0, `- [ ] ${taskText} <!-- mlw:${newId} -->`);
+		updateLineNumbersAfterInsert(store, sourceFile, insertAt + 1);
+		await store.app.vault.modify(file, lines.join("\n"));
+		return insertAt + 1;
+	} catch (e) {
+		console.error("MLW: Failed to append checkbox to file", sourceFile, e);
+		return -1;
 	}
-	if (insertAfter === -1) insertAfter = lines.length - 1;
-	const insertAt = insertAfter + 1;
-	lines.splice(insertAt, 0, `- [ ] ${taskText} <!-- mlw:${newId} -->`);
-	updateLineNumbersAfterInsert(store, sourceFile, insertAt + 1);
-	await store.app.vault.modify(file, lines.join("\n"));
-	return insertAt + 1;
 }
 
 function updateLineNumbersAfterInsert(store: DataStore, filePath: string, insertedLine1Based: number): void {
@@ -67,24 +74,17 @@ function updateLineNumbersAfterInsert(store: DataStore, filePath: string, insert
 	}
 }
 
-// ── Spawn Instance ───────────────────────────────────────────────
-
 async function spawnInstance(
 	store: DataStore, sourceTask: Task, newStartDate: Date,
 ): Promise<Task> {
 	const today = parseLocalDate(localToday());
 	const status = newStartDate > today ? TaskStatus.Scheduled : TaskStatus.NextAction;
-
-	// Calculate due_date: preserve offset from source if both start_date and due_date existed
 	let newDueDate: string | null = null;
 	if (sourceTask.due_date !== null && sourceTask.start_date !== null) {
 		const offsetMs = parseLocalDate(sourceTask.due_date).getTime() - parseLocalDate(sourceTask.start_date).getTime();
 		newDueDate = formatLocalDate(new Date(newStartDate.getTime() + offsetMs));
 	}
-
-	// Get task text for the new checkbox line
 	const taskText = sourceTask.cached_text ?? "Recurring task";
-
 	const newId = store.generateId();
 	const sourceLine = await appendCheckboxToFile(store, sourceTask.source_file, taskText, newId);
 
@@ -115,8 +115,6 @@ async function spawnInstance(
 	return newTask;
 }
 
-// ── On Task Completed ────────────────────────────────────────────
-
 /** Called after a task is completed. Spawns next recurrence instance if applicable. */
 export async function onTaskCompleted(store: DataStore, task: Task): Promise<void> {
 	if (task.recurrence_rule === null) return;
@@ -138,6 +136,7 @@ export async function onTaskCompleted(store: DataStore, task: Task): Promise<voi
 		if (existing.some(t => t.parent_task_id === task.id)) return;
 
 		const rule = parseRRule(task.recurrence_rule);
+		if (rule === null) return;
 		const anchor = new Date(completedDate);
 		const nextDate = rule.after(anchor, false);
 		if (nextDate === null) return;
@@ -149,8 +148,6 @@ export async function onTaskCompleted(store: DataStore, task: Task): Promise<voi
 		await checkFixedSpawnsForTemplate(store, templateId);
 	}
 }
-
-// ── Fixed Schedule Spawning ──────────────────────────────────────
 
 /** Check and spawn missed fixed-schedule instances for a single template. */
 async function checkFixedSpawnsForTemplate(store: DataStore, templateId: string): Promise<number> {
@@ -165,6 +162,7 @@ async function checkFixedSpawnsForTemplate(store: DataStore, templateId: string)
 
 	const today = parseLocalDate(localToday());
 	const rule = parseRRule(template.recurrence_rule);
+	if (rule === null) return 0;
 
 	// Find latest instance by start_date
 	let latestStartDate = "";
@@ -200,8 +198,6 @@ async function checkFixedSpawnsForTemplate(store: DataStore, templateId: string)
 	return spawned;
 }
 
-// ── Plugin Load ──────────────────────────────────────────────────
-
 /** Run on plugin load: check all fixed-schedule recurrences for missed spawns. */
 export async function onPluginLoad(store: DataStore): Promise<number> {
 	if (store.getSettings().recurrenceGloballyPaused) return 0;
@@ -229,8 +225,6 @@ function getActiveFixedTemplates(store: DataStore): Task[] {
 		!t.recurrence_suspended,
 	);
 }
-
-// ── Pause / Resume ───────────────────────────────────────────────
 
 /** Pause recurrence on a single task. */
 export function pauseTask(store: DataStore, taskId: string): void {
@@ -276,7 +270,9 @@ async function resumeFixedForTemplate(store: DataStore, templateId: string): Pro
 	if (template.recurrence_suspended || hasReachedEndCondition(store, template)) return 0;
 	const today = parseLocalDate(localToday());
 	const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
-	const nextDate = parseRRule(template.recurrence_rule).after(yesterday, true);
+	const rule = parseRRule(template.recurrence_rule);
+	if (rule === null) return 0;
+	const nextDate = rule.after(yesterday, true);
 	if (nextDate === null) return 0;
 	const allInstances = store.getTasksByTemplateId(templateId);
 	if (allInstances.some(t => t.start_date === formatLocalDate(nextDate))) return 0;
@@ -285,13 +281,11 @@ async function resumeFixedForTemplate(store: DataStore, templateId: string): Pro
 	return 1;
 }
 
-// ── Human-Readable Summary ───────────────────────────────────────
-
 /** Generate a human-readable summary of a recurrence rule. */
 export function getRecurrenceSummary(ruleStr: string, type: "fixed" | "relative" | null): string {
-	try {
-		const text = parseRRule(ruleStr).toText();
-		const cap = text.charAt(0).toUpperCase() + text.slice(1);
-		return type === "relative" ? `${cap} after completion` : cap;
-	} catch { return "Custom recurrence"; }
+	const rule = parseRRule(ruleStr);
+	if (rule === null) return "Custom recurrence";
+	const text = rule.toText();
+	const cap = text.charAt(0).toUpperCase() + text.slice(1);
+	return type === "relative" ? `${cap} after completion` : cap;
 }

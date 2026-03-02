@@ -59,12 +59,14 @@ export class DataStore {
 
 	/** Write data.json.bak in the plugin directory. */
 	private async createBackup(): Promise<void> {
-		const adapter = this.plugin.app.vault.adapter;
-		const pluginDir = normalizePath(
-			`${this.plugin.app.vault.configDir}/plugins/${this.plugin.manifest.id}`
-		);
-		const backupPath = normalizePath(`${pluginDir}/data.json.bak`);
-		await adapter.write(backupPath, JSON.stringify(this.data, null, 2));
+		try {
+			const adapter = this.plugin.app.vault.adapter;
+			const pluginDir = normalizePath(
+				`${this.plugin.app.vault.configDir}/plugins/${this.plugin.manifest.id}`
+			);
+			const backupPath = normalizePath(`${pluginDir}/data.json.bak`);
+			await adapter.write(backupPath, JSON.stringify(this.data, null, 2));
+		} catch (e) { console.warn("MLW: Failed to create backup", e); }
 	}
 
 	// ── Persistence ─────────────────────────────────────────────────

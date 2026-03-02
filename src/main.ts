@@ -22,7 +22,6 @@ export default class MindLikeWaterPlugin extends Plugin {
 	private pauseIndicator: HTMLElement | null = null;
 
 	async onload(): Promise<void> {
-		console.log("Loading Mind Like Water plugin");
 
 		this.store = new DataStore(this);
 		await this.store.load();
@@ -90,7 +89,7 @@ export default class MindLikeWaterPlugin extends Plugin {
 				if (count === 0) { new Notice("No paused recurring tasks to resume."); return; }
 				void resumeAllRecurrence(this.store).then(() => {
 					new Notice(`Resumed ${count} recurring task(s).`);
-				});
+				}).catch(e => console.error("MLW: Resume recurrence failed", e));
 			},
 		});
 
@@ -121,31 +120,20 @@ export default class MindLikeWaterPlugin extends Plugin {
 		registerCheckboxWatcher(this, this.store);
 
 		// ── Scheduler (auto-transition scheduled tasks) ───────
-		const transitioned = runScheduler(this.store);
-		if (transitioned > 0) {
-			console.log(`MLW: Transitioned ${transitioned} scheduled task(s) to Next Action`);
-		}
+		runScheduler(this.store);
 
 		// ── Recurrence (spawn missed fixed-schedule instances) ─
-		void runRecurrenceCheck(this.store).then(spawned => {
-			if (spawned > 0) console.log(`MLW: Spawned ${spawned} recurring task instance(s)`);
-		});
+		void runRecurrenceCheck(this.store).catch(e => console.error("MLW: Recurrence check failed", e));
 
 		// ── Integrity Check (deferred for metadata cache warmup) ─
 		setTimeout(() => {
-			const repaired = this.store.repairTaskProjectAOFs();
-			if (repaired > 0) {
-				console.log(`MLW: Repaired AOF on ${repaired} task(s) to match their project`);
-			}
+			this.store.repairTaskProjectAOFs();
 			void runIntegrityCheck(this.app, this.store).then(report => {
-				if (report.autoCleanedCount > 0) {
-					console.log(`MLW: Auto-cleaned ${report.autoCleanedCount} orphaned task(s)`);
-				}
 				for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE_MLW_UNIFIED)) {
 					(leaf.view as UnifiedTaskView).setIntegrityReport(report);
 				}
 				this.refreshAllViews();
-			});
+			}).catch(e => console.error("MLW: Integrity check failed", e));
 		}, 2000);
 
 		// ── File Delete → mark tasks orphaned ─────────────────
@@ -179,24 +167,25 @@ export default class MindLikeWaterPlugin extends Plugin {
 	}
 
 	onunload(): void {
-		console.log("Unloading Mind Like Water plugin");
 		this.app.workspace.detachLeavesOfType(VIEW_TYPE_MLW_UNIFIED);
 		void this.store.saveImmediate();
 	}
 
 	private async openTab(tabId: string): Promise<void> {
-		const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_MLW_UNIFIED);
-		if (leaves.length > 0 && leaves[0] !== undefined) {
-			await this.app.workspace.revealLeaf(leaves[0]);
-			(leaves[0].view as UnifiedTaskView).switchTab(tabId);
-			return;
-		}
-		const leaf = this.app.workspace.getRightLeaf(false);
-		if (leaf !== null) {
-			await leaf.setViewState({ type: VIEW_TYPE_MLW_UNIFIED, active: true });
-			await this.app.workspace.revealLeaf(leaf);
-			(leaf.view as UnifiedTaskView).switchTab(tabId);
-		}
+		try {
+			const leaves = this.app.workspace.getLeavesOfType(VIEW_TYPE_MLW_UNIFIED);
+			if (leaves.length > 0 && leaves[0] !== undefined) {
+				await this.app.workspace.revealLeaf(leaves[0]);
+				(leaves[0].view as UnifiedTaskView).switchTab(tabId);
+				return;
+			}
+			const leaf = this.app.workspace.getRightLeaf(false);
+			if (leaf !== null) {
+				await leaf.setViewState({ type: VIEW_TYPE_MLW_UNIFIED, active: true });
+				await this.app.workspace.revealLeaf(leaf);
+				(leaf.view as UnifiedTaskView).switchTab(tabId);
+			}
+		} catch (e) { console.error("MLW: Failed to open tab", e); }
 	}
 
 	private updatePauseIndicator(): void {
@@ -244,8 +233,10 @@ export default class MindLikeWaterPlugin extends Plugin {
 	}
 
 	private async ensureProjectFolder(): Promise<void> {
-		const folderPath = normalizePath(this.store.getSettings().projectFolder);
-		const exists = await this.app.vault.adapter.exists(folderPath);
-		if (!exists) await this.app.vault.createFolder(folderPath);
+		try {
+			const folderPath = normalizePath(this.store.getSettings().projectFolder);
+			const exists = await this.app.vault.adapter.exists(folderPath);
+			if (!exists) await this.app.vault.createFolder(folderPath);
+		} catch (e) { console.error("MLW: Failed to create project folder", e); }
 	}
 }

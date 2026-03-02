@@ -175,15 +175,17 @@ export abstract class BaseTaskView extends ItemView {
 	/** Complete a task from the view: update DataStore + check the source file checkbox. */
 	protected async completeTaskFromView(task: Task): Promise<void> {
 		this.store.completeTask(task.id);
-		const file = this.app.vault.getAbstractFileByPath(task.source_file);
-		if (!(file instanceof TFile)) return;
-		const content = await this.app.vault.read(file);
-		const lines = content.split("\n");
-		const idx = this.findTaskLine(lines, task);
-		const line = lines[idx];
-		if (line === undefined) return;
-		lines[idx] = line.replace(/^(\s*[-*]\s+)\[ \]/, "$1[x]");
-		await this.app.vault.modify(file, lines.join("\n"));
+		try {
+			const file = this.app.vault.getAbstractFileByPath(task.source_file);
+			if (!(file instanceof TFile)) return;
+			const content = await this.app.vault.read(file);
+			const lines = content.split("\n");
+			const idx = this.findTaskLine(lines, task);
+			const line = lines[idx];
+			if (line === undefined) return;
+			lines[idx] = line.replace(/^(\s*[-*]\s+)\[ \]/, "$1[x]");
+			await this.app.vault.modify(file, lines.join("\n"));
+		} catch (e) { console.error("MLW: Failed to check off task in source file", e); }
 	}
 
 	// ── AOF filtering & grouping ─────────────────────────────────
@@ -264,28 +266,30 @@ export abstract class BaseTaskView extends ItemView {
 
 	/** Read the task text from its source file, stripping checkbox and MLW comment. */
 	protected async readTaskText(task: Task): Promise<string> {
-		const file = this.app.vault.getAbstractFileByPath(task.source_file);
-		if (!(file instanceof TFile)) return this.fallbackText(task);
-
-		const content = await this.app.vault.cachedRead(file);
-		const lines = content.split("\n");
-		const idx = this.findTaskLine(lines, task);
-		const line = lines[idx];
-		if (line === undefined) return this.fallbackText(task);
-
-		const cleaned = line.replace(CHECKBOX_PREFIX_RE, "").replace(MLW_COMMENT_RE, "").trim();
-		return cleaned || this.fallbackText(task);
+		try {
+			const file = this.app.vault.getAbstractFileByPath(task.source_file);
+			if (!(file instanceof TFile)) return this.fallbackText(task);
+			const content = await this.app.vault.cachedRead(file);
+			const lines = content.split("\n");
+			const idx = this.findTaskLine(lines, task);
+			const line = lines[idx];
+			if (line === undefined) return this.fallbackText(task);
+			const cleaned = line.replace(CHECKBOX_PREFIX_RE, "").replace(MLW_COMMENT_RE, "").trim();
+			return cleaned || this.fallbackText(task);
+		} catch { return this.fallbackText(task); }
 	}
 
 	/** Navigate the editor to the task's source file and line. */
 	protected async navigateToTask(task: Task): Promise<void> {
-		const file = this.app.vault.getAbstractFileByPath(task.source_file);
-		if (!(file instanceof TFile)) { new Notice("Source file no longer exists for this task."); return; }
-		const content = await this.app.vault.cachedRead(file);
-		const idx = this.findTaskLine(content.split("\n"), task);
-		const leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf("tab");
-		await leaf.openFile(file, { eState: { line: idx } });
-		this.app.workspace.setActiveLeaf(leaf, { focus: true });
+		try {
+			const file = this.app.vault.getAbstractFileByPath(task.source_file);
+			if (!(file instanceof TFile)) { new Notice("Source file no longer exists for this task."); return; }
+			const content = await this.app.vault.cachedRead(file);
+			const idx = this.findTaskLine(content.split("\n"), task);
+			const leaf = this.app.workspace.getMostRecentLeaf() ?? this.app.workspace.getLeaf("tab");
+			await leaf.openFile(file, { eState: { line: idx } });
+			this.app.workspace.setActiveLeaf(leaf, { focus: true });
+		} catch (e) { console.error("MLW: Failed to navigate to task", e); }
 	}
 
 	protected fallbackText(task: Task): string { return task.cached_text ?? `Task in ${this.shortenPath(task.source_file)}`; }
