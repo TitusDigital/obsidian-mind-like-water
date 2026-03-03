@@ -1,7 +1,7 @@
 import type { DataStore } from "data/DataStore";
-import { TaskStatus, type Task } from "data/models";
+import { TaskStatus, type AOFColor, type Task } from "data/models";
 import { VIEW_TYPE_MLW_UNIFIED } from "views/ViewConstants";
-import { BaseTaskView, type ViewConfig } from "views/BaseTaskView";
+import { BaseTaskView, type Badge, type ViewConfig } from "views/BaseTaskView";
 import { FilterBar } from "views/FilterBar";
 import { ViewState } from "views/ViewState";
 import { renderProjects } from "views/ProjectsTab";
@@ -186,9 +186,9 @@ export class UnifiedTaskView extends BaseTaskView {
 			for (const task of active) {
 				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
-				const meta: string[] = [];
+				const meta: Badge[] = [];
 				if (task.due_date !== null && task.due_date <= today) meta.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
-				if (task.project !== null) meta.push(task.project);
+				if (task.project !== null) meta.push(this.coloredBadge(task.project, task.area_of_focus));
 				if (task.context !== null) meta.push(`@${task.context}`);
 				if (task.starred) meta.push("\u2B50");
 				this.renderTaskRow(task, text, meta);
@@ -216,9 +216,9 @@ export class UnifiedTaskView extends BaseTaskView {
 			for (const task of items) {
 				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
-				const meta: string[] = [];
+				const meta: Badge[] = [];
 				if (task.start_date !== null) meta.push(this.formatDate(task.start_date));
-				if (task.area_of_focus) meta.push(task.area_of_focus);
+				if (task.area_of_focus) meta.push(this.coloredBadge(task.area_of_focus, task.area_of_focus));
 				this.renderTaskRow(task, text, meta);
 			}
 		}
@@ -233,7 +233,7 @@ export class UnifiedTaskView extends BaseTaskView {
 			for (const task of gt) {
 				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
-				this.renderTaskRow(task, text, task.project !== null ? [task.project] : []);
+				this.renderTaskRow(task, text, task.project !== null ? [this.coloredBadge(task.project, task.area_of_focus)] : []);
 			}
 		}
 	}
@@ -278,9 +278,20 @@ export class UnifiedTaskView extends BaseTaskView {
 		});
 	}
 
-	private buildFocusBadges(task: Task): string[] {
+	/** Look up the AOFColor for an area name, or undefined if not found. */
+	private aofColor(aofName: string): AOFColor | undefined {
+		return this.store.getSettings().areasOfFocus.find(a => a.name === aofName)?.color;
+	}
+
+	/** Wrap text in a colored badge if the AOF color is known, else plain string. */
+	private coloredBadge(text: string, aofName: string): Badge {
+		const color = this.aofColor(aofName);
+		return color !== undefined ? { text, color } : text;
+	}
+
+	private buildFocusBadges(task: Task): Badge[] {
 		const today = localToday();
-		const badges: string[] = [];
+		const badges: Badge[] = [];
 		if (task.starred) badges.push("\u2B50 Starred");
 		if (task.due_date !== null && task.due_date <= today) {
 			badges.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
@@ -288,7 +299,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		if (task.start_date !== null && task.start_date === today && task.status === TaskStatus.NextAction) {
 			badges.push("\uD83D\uDDD3\uFE0F Start today");
 		}
-		if (task.area_of_focus) badges.push(task.area_of_focus);
+		if (task.area_of_focus) badges.push(this.coloredBadge(task.area_of_focus, task.area_of_focus));
 		return badges;
 	}
 

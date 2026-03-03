@@ -1,6 +1,9 @@
 import { ItemView, type WorkspaceLeaf, TFile, Notice } from "obsidian";
 import type { DataStore } from "data/DataStore";
-import type { Task } from "data/models";
+import type { AOFColor, Task } from "data/models";
+
+/** A badge item — either plain text or text with an AOF color applied. */
+export type Badge = string | { text: string; color: AOFColor };
 import { ViewState, type GroupMode } from "views/ViewState";
 import { localToday } from "views/DateUtils";
 import { getRecurrenceSummary } from "services/RecurrenceService";
@@ -125,7 +128,7 @@ export abstract class BaseTaskView extends ItemView {
 	}
 
 	/** Render a clickable task row with complete checkbox and star toggle. */
-	protected renderTaskRow(task: Task, text: string, metaItems?: string[]): void {
+	protected renderTaskRow(task: Task, text: string, metaItems?: Badge[]): void {
 		const dueForced = task.due_date !== null && task.due_date <= localToday();
 		const showStarred = task.starred || dueForced;
 		const cls = showStarred ? "mlw-view-item mlw-view-item--starred" : "mlw-view-item";
@@ -161,7 +164,16 @@ export abstract class BaseTaskView extends ItemView {
 
 		if (metaItems !== undefined && metaItems.length > 0) {
 			const metaEl = item.createDiv("mlw-view-item__meta");
-			for (const m of metaItems) metaEl.createSpan({ text: m, cls: "mlw-view-item__badge" });
+			for (const m of metaItems) {
+				if (typeof m === "string") {
+					metaEl.createSpan({ text: m, cls: "mlw-view-item__badge" });
+				} else {
+					const span = metaEl.createSpan({ text: m.text, cls: "mlw-view-item__badge" });
+					span.style.backgroundColor = m.color.bg;
+					span.style.color = m.color.text;
+					span.style.borderColor = m.color.border;
+				}
+			}
 		}
 
 		item.addEventListener("click", (e) => {
