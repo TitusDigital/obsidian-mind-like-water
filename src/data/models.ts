@@ -21,6 +21,13 @@ export enum CaptureLocation {
 	InboxFile = "inbox_file",
 }
 
+/** Where in the file Quick Capture inserts the task */
+export enum CapturePosition {
+	Top = "top",
+	Bottom = "bottom",
+	UnderHeading = "under_heading",
+}
+
 /** How much detail to show on inline editor chips */
 export enum ChipDisplayMode { Full = "full", Compact = "compact", Dot = "dot" }
 
@@ -96,6 +103,8 @@ export interface Task {
 export interface MLWSettings {
 	projectFolder: string;
 	captureLocation: CaptureLocation;
+	capturePosition: CapturePosition;
+	captureHeading: string;
 	inboxFile: string;
 	areasOfFocus: AreaOfFocus[];
 	contexts: string[];
@@ -140,6 +149,8 @@ export const FALLBACK_AOF_COLOR: AOFColor = {
 export const DEFAULT_SETTINGS: MLWSettings = {
 	projectFolder: "MLW/Projects",
 	captureLocation: CaptureLocation.DailyNote,
+	capturePosition: CapturePosition.Bottom,
+	captureHeading: "",
 	inboxFile: "MLW/Inbox.md",
 	areasOfFocus: [],
 	contexts: [],

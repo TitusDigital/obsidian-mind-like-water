@@ -3,6 +3,7 @@ import type MindLikeWaterPlugin from "main";
 import {
 	type AreaOfFocus,
 	CaptureLocation,
+	CapturePosition,
 	ChipDisplayMode,
 	DEFAULT_AOF_COLORS,
 	FALLBACK_AOF_COLOR,
@@ -44,6 +45,17 @@ export class MLWSettingTab extends PluginSettingTab {
 				.setValue(s.captureLocation).onChange(v => upd({ captureLocation: v as CaptureLocation })));
 		new Setting(containerEl).setName("Inbox file").setDesc("File for captured tasks when not using daily notes.")
 			.addText(t => t.setPlaceholder("MLW/Inbox.md").setValue(s.inboxFile).onChange(v => upd({ inboxFile: v })));
+		new Setting(containerEl).setName("Capture position").setDesc("Where in the file the captured task is inserted.")
+			.addDropdown(d => d
+				.addOption(CapturePosition.Bottom, "Bottom of note")
+				.addOption(CapturePosition.Top, "Top of note")
+				.addOption(CapturePosition.UnderHeading, "Under a heading")
+				.setValue(s.capturePosition ?? CapturePosition.Bottom)
+				.onChange(v => { upd({ capturePosition: v as CapturePosition }); this.display(); }));
+		if ((s.capturePosition ?? CapturePosition.Bottom) === CapturePosition.UnderHeading) {
+			new Setting(containerEl).setName("Capture heading").setDesc("Heading to insert tasks under. Created if it doesn't exist.")
+				.addText(t => t.setPlaceholder("## Inbox").setValue(s.captureHeading ?? "").onChange(v => upd({ captureHeading: v })));
+		}
 		new Setting(containerEl).setName("Chip display mode").setDesc("Detail level for inline task chips in the editor.")
 			.addDropdown(d => d.addOption(ChipDisplayMode.Full, "Full (all metadata)").addOption(ChipDisplayMode.Compact, "Compact (AOF only)")
 				.addOption(ChipDisplayMode.Dot, "Dot (colored circle)").setValue(s.chipDisplayMode)
