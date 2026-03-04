@@ -8,10 +8,12 @@ function mockPlugin(savedData: unknown = null) {
 		loadData: vi.fn().mockResolvedValue(savedData),
 		saveData: vi.fn().mockResolvedValue(undefined),
 		manifest: { id: "mind-like-water" },
+		registerEvent: vi.fn(),
 		app: {
 			vault: {
 				adapter: { exists: vi.fn().mockResolvedValue(true), write: vi.fn() },
 				configDir: ".obsidian",
+				on: vi.fn().mockReturnValue({}),
 			},
 		},
 	};

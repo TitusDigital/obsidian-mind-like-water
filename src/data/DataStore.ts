@@ -22,6 +22,7 @@ export class DataStore {
 	private data: MLWData;
 	private saveTimeout: ReturnType<typeof setTimeout> | null = null;
 	private onChangeCallbacks = new Set<() => void>();
+	private isSaving = false;
 
 	constructor(plugin: Plugin) {
 		this.plugin = plugin;
@@ -55,6 +56,22 @@ export class DataStore {
 		if (this.data.settings.dataStoreBackup) {
 			await this.createBackup();
 		}
+		this.setupSyncWatcher();
+	}
+
+	/** Watch for external data.json changes (e.g. Obsidian Sync) and reload automatically. */
+	private setupSyncWatcher(): void {
+		const dataPath = normalizePath(
+			`${this.plugin.app.vault.configDir}/plugins/${this.plugin.manifest.id}/data.json`
+		);
+		this.plugin.registerEvent(
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			(this.plugin.app.vault as any).on("raw", (path: string) => {
+				if (path === dataPath && !this.isSaving) {
+					void this.load().then(() => this.notifyChange());
+				}
+			})
+		);
 	}
 
 	/** Write data.json.bak in the plugin directory. */
@@ -71,12 +88,17 @@ export class DataStore {
 
 	private scheduleSave(): void {
 		if (this.saveTimeout !== null) clearTimeout(this.saveTimeout);
-		this.saveTimeout = setTimeout(() => { this.saveTimeout = null; void this.plugin.saveData(this.data); }, SAVE_DEBOUNCE_MS);
+		this.saveTimeout = setTimeout(async () => {
+			this.saveTimeout = null;
+			this.isSaving = true;
+			try { await this.plugin.saveData(this.data); } finally { this.isSaving = false; }
+		}, SAVE_DEBOUNCE_MS);
 	}
 
 	async saveImmediate(): Promise<void> {
 		if (this.saveTimeout !== null) { clearTimeout(this.saveTimeout); this.saveTimeout = null; }
-		await this.plugin.saveData(this.data);
+		this.isSaving = true;
+		try { await this.plugin.saveData(this.data); } finally { this.isSaving = false; }
 	}
 
 	/** Register a callback invoked after any task create/update/delete. */
@@ -189,8 +211,12 @@ export class DataStore {
 		return this.data.settings;
 	}
 
-	/** Update settings (merges with current). */
+	/** Update settings (merges with current). Skips save if nothing changed. */
 	updateSettings(partial: Partial<MLWSettings>): void {
+		const changed = (Object.keys(partial) as (keyof MLWSettings)[]).some(
+			k => JSON.stringify(this.data.settings[k]) !== JSON.stringify(partial[k])
+		);
+		if (!changed) return;
 		Object.assign(this.data.settings, partial);
 		this.scheduleSave();
 	}
