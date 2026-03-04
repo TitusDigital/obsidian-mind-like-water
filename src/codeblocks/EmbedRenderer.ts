@@ -2,6 +2,7 @@ import { MarkdownRenderChild, TFile } from "obsidian";
 import type { App } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import type { Task } from "data/models";
+import { MetadataEditor } from "components/MetadataEditor";
 
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
@@ -87,7 +88,14 @@ export class EmbedRenderer extends MarkdownRenderChild {
 			}
 		}
 
-		row.addEventListener("click", () => void this.navigateToTask(task));
+		row.addEventListener("click", (e) => {
+			if (e.ctrlKey || e.metaKey) {
+				e.preventDefault();
+				MetadataEditor.open(task, text, row.getBoundingClientRect(), this.store);
+			} else {
+				void this.navigateToTask(task);
+			}
+		});
 	}
 
 	private async readTaskText(task: Task): Promise<string> {
