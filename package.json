@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-mind-like-water",
-	"version": "1.0.0",
+	"version": "1.0.3",
 	"description": "GTD-powered task management for Obsidian",
 	"main": "main.js",
 	"type": "module",
@@ -11,7 +11,12 @@
 		"test": "vitest run",
 		"lint": "eslint ."
 	},
-	"keywords": ["obsidian", "gtd", "task-management", "productivity"],
+	"keywords": [
+		"obsidian",
+		"gtd",
+		"task-management",
+		"productivity"
+	],
 	"license": "0-BSD",
 	"devDependencies": {
 		"@codemirror/state": "^6.5.4",
