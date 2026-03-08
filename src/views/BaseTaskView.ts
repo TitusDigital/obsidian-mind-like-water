@@ -9,6 +9,9 @@ import { localToday } from "views/DateUtils";
 import { getRecurrenceSummary } from "services/RecurrenceService";
 import { RecurrenceHistoryModal } from "components/RecurrenceHistory";
 import { MetadataEditor } from "components/MetadataEditor";
+import { groupByAOF, groupTasks, type GroupContext } from "views/GroupUtils";
+import { renderInlineCapture } from "views/InlineCapture";
+import { QuickCaptureModal, type CaptureDefaults } from "capture/QuickCaptureModal";
 
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
 const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
@@ -88,8 +91,8 @@ export abstract class BaseTaskView extends ItemView {
 		empty.createEl("p", { text: cfg.emptyHint, cls: "mlw-view-empty__hint" });
 	}
 
-	/** Render a group header with optional colored dot, divider line, and count. */
-	protected renderGroupHeader(name: string, dotColor?: string, count?: number): void {
+	/** Render a group header with optional colored dot, divider line, count, and "+" button. */
+	protected renderGroupHeader(name: string, dotColor?: string, count?: number, context?: GroupContext): void {
 		const group = this.listEl.createDiv("mlw-view-group");
 		if (dotColor !== undefined) {
 			const dot = group.createSpan("mlw-view-group__dot");
@@ -98,6 +101,21 @@ export abstract class BaseTaskView extends ItemView {
 		group.createSpan({ text: name, cls: "mlw-view-group__name" });
 		group.createDiv("mlw-view-group__line");
 		if (count !== undefined) group.createSpan({ text: String(count), cls: "mlw-view-group__count" });
+		if (context !== undefined) {
+			const addBtn = group.createSpan({ text: "+", cls: "mlw-view-group__add" });
+			addBtn.setAttribute("role", "button");
+			addBtn.ariaLabel = "Add task to this group";
+			addBtn.addEventListener("mousedown", (e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				if (e.shiftKey) {
+					const defaults: CaptureDefaults = { status: context.status, aof: context.aof, project: context.project };
+					new QuickCaptureModal(this.app, this.store, undefined, defaults).open();
+				} else {
+					renderInlineCapture(group, this.app, this.store, context, () => this.refresh());
+				}
+			});
+		}
 	}
 
 	/** Render a content header with tab title, task count, optional completed toggle, and optional group-by selector. */
@@ -211,47 +229,14 @@ export abstract class BaseTaskView extends ItemView {
 		return tasks.filter(t => aofs.has(t.area_of_focus));
 	}
 
-	/** Group tasks by a string key. Returns sorted groups with fallback label for empty keys. */
-	private groupTasksBy(tasks: Task[], getKey: (t: Task) => string, fallback: string): { name: string; tasks: Task[] }[] {
-		const grouped = new Map<string, Task[]>();
-		for (const task of tasks) {
-			const key = getKey(task) || "";
-			const existing = grouped.get(key);
-			if (existing !== undefined) existing.push(task);
-			else grouped.set(key, [task]);
-		}
-		const result: { name: string; tasks: Task[] }[] = [];
-		const noKey = grouped.get("");
-		grouped.delete("");
-		for (const [key, gt] of [...grouped].sort((a, b) => a[0].localeCompare(b[0]))) {
-			gt.sort((a, b) => a.sort_order - b.sort_order);
-			result.push({ name: key, tasks: gt });
-		}
-		if (noKey !== undefined) {
-			noKey.sort((a, b) => a.sort_order - b.sort_order);
-			result.push({ name: fallback, tasks: noKey });
-		}
-		return result;
-	}
-
 	/** Group tasks by AOF, respecting settings display order and colors. */
 	protected groupByAOF(tasks: Task[]): { name: string; color?: string; tasks: Task[] }[] {
-		const aofOrder = this.store.getSettings().areasOfFocus;
-		const colorMap = new Map(aofOrder.map(a => [a.name, a.color.text]));
-		const orderMap = new Map(aofOrder.map((a, i) => [a.name, i]));
-		const groups = this.groupTasksBy(tasks, t => t.area_of_focus || "", "Uncategorized");
-		groups.sort((a, b) => (orderMap.get(a.name) ?? 999) - (orderMap.get(b.name) ?? 999));
-		return groups.map(g => ({ ...g, color: colorMap.get(g.name) ?? "#A0A0A0" }));
+		return groupByAOF(tasks, this.store);
 	}
 
 	/** Dispatch to the appropriate grouping function based on mode. */
 	protected groupTasks(tasks: Task[], mode: GroupMode): { name: string; color?: string; tasks: Task[] }[] {
-		switch (mode) {
-			case "aof": return this.groupByAOF(tasks);
-			case "project": return this.groupTasksBy(tasks, t => t.project ?? "", "No Project");
-			case "context": return this.groupTasksBy(tasks, t => t.context ?? "", "No Context");
-			case "none": return [{ name: "", tasks: [...tasks].sort((a, b) => a.sort_order - b.sort_order) }];
-		}
+		return groupTasks(tasks, mode, this.store);
 	}
 
 	// ── Shared utilities ──────────────────────────────────────────

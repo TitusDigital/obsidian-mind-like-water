@@ -3,18 +3,17 @@ import { TaskStatus, type AOFColor, type Task } from "data/models";
 import { VIEW_TYPE_MLW_UNIFIED } from "views/ViewConstants";
 import { BaseTaskView, type Badge, type ViewConfig } from "views/BaseTaskView";
 import { FilterBar } from "views/FilterBar";
-import { ViewState } from "views/ViewState";
+import { ViewState, type GroupMode } from "views/ViewState";
 import { renderProjects } from "views/ProjectsTab";
 import { renderReview } from "views/ReviewTab";
 import { type Bucket, bucketByDate, localToday } from "views/DateUtils";
 import { buildToolbar } from "views/Toolbar";
 import { runIntegrityCheck, type IntegrityReport } from "services/IntegrityChecker";
 import { TaskReorder } from "components/TaskReorder";
+import type { GroupContext } from "views/GroupUtils";
 
 type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects" | "review";
 const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects", "review"];
-
-import type { GroupMode } from "views/ViewState";
 
 const TAB_CFG: Record<TabId, { label: string; pill: string; filter: boolean; completed: boolean; group: GroupMode | false; empty: string; hint: string }> = {
 	focus: { label: "Focus", pill: "Focus", filter: false, completed: true, group: "none", empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
@@ -40,14 +39,10 @@ export class UnifiedTaskView extends BaseTaskView {
 	getViewType(): string { return VIEW_TYPE_MLW_UNIFIED; }
 	getDisplayText(): string { return "Mind Like Water"; }
 	getIcon(): string { return "droplets"; }
-
 	setIntegrityReport(report: IntegrityReport): void { this.integrityReport = report; }
 
 	private refreshIntegrity(): void {
-		void runIntegrityCheck(this.app, this.store).then(report => {
-			this.integrityReport = report;
-			void this.renderContent();
-		});
+		void runIntegrityCheck(this.app, this.store).then(report => { this.integrityReport = report; void this.renderContent(); });
 	}
 
 	getViewConfig(): ViewConfig {
@@ -96,7 +91,6 @@ export class UnifiedTaskView extends BaseTaskView {
 			this.filterBar = new FilterBar(this.controlsEl, () => void this.renderContent());
 		}
 	}
-
 	override refresh(): void { this.rebuildToolbar(); super.refresh(); }
 
 	private getRecentCompleted(): Task[] {
@@ -106,7 +100,6 @@ export class UnifiedTaskView extends BaseTaskView {
 			.filter(t => t.completed_date !== null && t.completed_date >= cutoff)
 			.sort((a, b) => (b.completed_date ?? "").localeCompare(a.completed_date ?? ""));
 	}
-
 	private completedToggle(count: number): { count: number; active: boolean; onToggle: () => void } {
 		return { count, active: this.showCompleted, onToggle: () => { this.showCompleted = !this.showCompleted; void this.renderContent(); } };
 	}
@@ -141,7 +134,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		for (const { name, color, tasks: gt } of this.groupTasks(allTasks, ViewState.getInstance().getGroupMode())) {
 			const active = gt.filter(t => t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped);
 			const done = gt.filter(t => t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped);
-			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length);
+			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length, this.groupContext(name, TaskStatus.NextAction));
 			active.sort(focusSort);
 			for (const task of active) {
 				if (this.isStaleRender(gen)) return;
@@ -182,7 +175,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		for (const { name, color, tasks: gt } of this.groupTasks(allTasks, ViewState.getInstance().getGroupMode())) {
 			const active = gt.filter(t => t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped);
 			const done = gt.filter(t => t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped);
-			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length);
+			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length, this.groupContext(name, TaskStatus.NextAction));
 			for (const task of active) {
 				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
@@ -229,7 +222,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		if (tasks.length === 0) { this.renderEmpty(); return; }
 		this.renderContentHeader("Someday", tasks.length, undefined, true);
 		for (const { name, color, tasks: gt } of this.groupTasks(tasks, ViewState.getInstance().getGroupMode())) {
-			if (name !== "") this.renderGroupHeader(name, color, gt.length);
+			if (name !== "") this.renderGroupHeader(name, color, gt.length, this.groupContext(name, TaskStatus.Someday));
 			for (const task of gt) {
 				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
@@ -278,12 +271,10 @@ export class UnifiedTaskView extends BaseTaskView {
 		});
 	}
 
-	/** Look up the AOFColor for an area name, or undefined if not found. */
 	private aofColor(aofName: string): AOFColor | undefined {
 		return this.store.getSettings().areasOfFocus.find(a => a.name === aofName)?.color;
 	}
 
-	/** Wrap text in a colored badge if the AOF color is known, else plain string. */
 	private coloredBadge(text: string, aofName: string): Badge {
 		const color = this.aofColor(aofName);
 		return color !== undefined ? { text, color } : text;
@@ -293,14 +284,17 @@ export class UnifiedTaskView extends BaseTaskView {
 		const today = localToday();
 		const badges: Badge[] = [];
 		if (task.starred) badges.push("\u2B50 Starred");
-		if (task.due_date !== null && task.due_date <= today) {
-			badges.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
-		}
-		if (task.start_date !== null && task.start_date === today && task.status === TaskStatus.NextAction) {
-			badges.push("\uD83D\uDDD3\uFE0F Start today");
-		}
+		if (task.due_date !== null && task.due_date <= today) badges.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
+		if (task.start_date !== null && task.start_date === today && task.status === TaskStatus.NextAction) badges.push("\uD83D\uDDD3\uFE0F Start today");
 		if (task.area_of_focus) badges.push(this.coloredBadge(task.area_of_focus, task.area_of_focus));
 		return badges;
+	}
+
+	private groupContext(groupName: string, status: TaskStatus): GroupContext {
+		const mode = ViewState.getInstance().getGroupMode();
+		if (mode === "aof") return { aof: groupName, status };
+		if (mode === "project") return { project: groupName, aof: this.store.getProjectAOF(groupName), status };
+		return { status };
 	}
 
 }

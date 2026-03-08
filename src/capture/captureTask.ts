@@ -8,6 +8,13 @@ export interface CaptureResult {
 	lineNumber: number;
 }
 
+/** Optional overrides for task fields when capturing from a context-aware source (e.g. group header "+"). */
+export interface CaptureOptions {
+	status?: TaskStatus;
+	area_of_focus?: string;
+	project?: string;
+}
+
 /**
  * Insert a checkbox line at the top of a file's content.
  * Returns the modified content and 1-based line number of the inserted line.
@@ -87,6 +94,7 @@ export function insertUnderHeading(content: string, checkboxLine: string, headin
  */
 export async function captureTask(
 	app: App, store: DataStore, taskText: string, targetFile: TFile,
+	options?: CaptureOptions,
 ): Promise<CaptureResult> {
 	const id = store.generateId();
 	const checkboxLine = `- [ ] ${taskText} <!-- mlw:${id} -->`;
@@ -111,7 +119,9 @@ export async function captureTask(
 		id,
 		source_file: targetFile.path,
 		source_line: lineNumber,
-		status: TaskStatus.Inbox,
+		status: options?.status ?? TaskStatus.Inbox,
+		area_of_focus: options?.area_of_focus ?? "",
+		project: options?.project ?? null,
 	});
 
 	return { taskId: id, filePath: targetFile.path, lineNumber };

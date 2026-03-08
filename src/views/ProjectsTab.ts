@@ -1,8 +1,9 @@
 import { type App, TFile } from "obsidian";
 import type { DataStore } from "data/DataStore";
-import { ProjectStatus, type ProjectMeta, type Task, TaskStatus } from "data/models";
+import { FALLBACK_AOF_COLOR, ProjectStatus, type ProjectMeta, type Task, TaskStatus } from "data/models";
 import { readAllProjects, updateProjectStatus } from "data/ProjectReader";
 import { ViewState } from "views/ViewState";
+import { ProjectCreator } from "components/ProjectCreator";
 
 interface ProjectCard {
 	project: ProjectMeta;
@@ -90,6 +91,21 @@ export function renderProjects(listEl: HTMLElement, store: DataStore, app: App):
 			dot.style.background = group.color;
 		}
 		header.createSpan({ text: group.name, cls: "mlw-view-group__name" });
+		const addBtn = header.createSpan({ text: "+", cls: "mlw-view-group__add" });
+		addBtn.setAttribute("role", "button");
+		addBtn.ariaLabel = "Create project in this area";
+		addBtn.addEventListener("mousedown", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const aofColor = settings.areasOfFocus.find(a => a.name === group.name)?.color ?? FALLBACK_AOF_COLOR;
+			const container = document.createElement("div");
+			header.insertAdjacentElement("afterend", container);
+			new ProjectCreator(container, group.name, aofColor, store, () => {
+				container.remove();
+				listEl.empty();
+				renderProjects(listEl, store, app);
+			}, () => container.remove());
+		});
 		for (const card of group.cards) renderCard(listEl, card, app);
 	}
 }

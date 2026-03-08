@@ -365,6 +365,13 @@
 .mlw-view-group__name { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 .mlw-view-group__line { flex: 1; height: 1px; background: var(--background-modifier-border); }
 .mlw-view-group__count { font-size: 11px; color: var(--text-faint); font-family: var(--font-monospace); flex-shrink: 0; }
+.mlw-view-group__add { font-size: 14px; font-weight: 600; color: var(--text-faint); cursor: pointer; flex-shrink: 0; line-height: 1; padding: 0 2px; border-radius: 4px; user-select: none; }
+.mlw-view-group__add:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
+.mlw-inline-capture { padding: 4px 16px; }
+.mlw-inline-capture__input { width: 100%; padding: 6px 10px; font-size: 13px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); color: var(--text-normal); outline: none; }
+.mlw-inline-capture__input:focus { border-color: var(--interactive-accent); box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2); }
+.mlw-capture-defaults { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+.mlw-capture-defaults__badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--background-modifier-hover); color: var(--text-muted); font-weight: 500; }
 .mlw-view-item {
 	display: flex; align-items: center; gap: 8px;
 	padding: 6px 16px; margin: 1px 0; border-radius: 6px;
