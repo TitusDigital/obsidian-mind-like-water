@@ -339,6 +339,7 @@
 	color: var(--interactive-accent); border-color: rgba(var(--interactive-accent-rgb), 0.3);
 	text-decoration: line-through;
 }
+.mlw-filter-chip--aof { border-radius: 10px; padding: 2px 9px; }
 
 .mlw-view-list { overflow-y: auto; }
 .mlw-view-empty { padding: 32px 16px; text-align: center; color: var(--text-muted); }

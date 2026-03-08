@@ -108,16 +108,21 @@ export class FilterBar {
 					text: label,
 					cls: `mlw-filter-chip mlw-filter-chip--${state}`,
 				});
-				if (dim.key === "aof" || dim.key === "project") {
-				const aofName = dim.key === "aof" ? value : this.store.getProjectAOF(value);
-				if (aofName) {
-					const c = this.store.getAOFColor(aofName);
+				if (dim.key === "aof") {
+					const c = this.store.getAOFColor(value);
 					chip.style.backgroundColor = c.bg;
 					chip.style.color = c.text;
 					chip.style.borderColor = c.border;
+					chip.classList.add("mlw-filter-chip--aof");
 					if (state === "off") chip.style.opacity = "0.65";
+				} else if (dim.key === "project") {
+					const aofName = this.store.getProjectAOF(value);
+					if (aofName) {
+						const c = this.store.getAOFColor(aofName);
+						chip.style.borderLeftColor = c.text;
+						chip.style.borderLeftWidth = "3px";
+					}
 				}
-			}
 			chip.addEventListener("click", (e) => this.cycleChip(dim.key, chipKey, e));
 			}
 		}
