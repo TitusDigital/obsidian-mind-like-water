@@ -25,10 +25,14 @@ export default tseslint.config(
 	globalIgnores([
 		"node_modules",
 		"dist",
+		".obsidian",
+		"demo-vault",
 		"esbuild.config.mjs",
 		"eslint.config.js",
 		"version-bump.mjs",
 		"versions.json",
 		"main.js",
+		"*.jsx",
+		"*.cjs",
 	]),
 );
