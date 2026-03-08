@@ -369,6 +369,7 @@
 .mlw-view-group__add { font-size: 14px; font-weight: 600; color: var(--text-faint); cursor: pointer; flex-shrink: 0; line-height: 1; padding: 0 2px; border-radius: 4px; user-select: none; }
 .mlw-view-group__add:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
 .mlw-inline-capture { padding: 4px 16px; }
+.mlw-inbox-capture { padding: 8px 16px 4px; margin-bottom: 4px; }
 .mlw-inline-capture__input { width: 100%; padding: 6px 10px; font-size: 13px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-primary); color: var(--text-normal); outline: none; }
 .mlw-inline-capture__input:focus { border-color: var(--interactive-accent); box-shadow: 0 0 0 2px rgba(var(--interactive-accent-rgb), 0.2); }
 .mlw-capture-defaults { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }

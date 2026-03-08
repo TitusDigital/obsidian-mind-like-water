@@ -11,7 +11,7 @@ import { buildToolbar } from "views/Toolbar";
 import { runIntegrityCheck, type IntegrityReport } from "services/IntegrityChecker";
 import { TaskReorder } from "components/TaskReorder";
 import type { GroupContext } from "views/GroupUtils";
-
+import { renderInboxCapture } from "views/InlineCapture";
 type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" | "projects" | "review";
 const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects", "review"];
 
@@ -35,6 +35,7 @@ export class UnifiedTaskView extends BaseTaskView {
 	private tabBtns = new Map<string, HTMLElement>();
 	private integrityReport: IntegrityReport | null = null;
 	private reorder: TaskReorder | null = null;
+	private inboxCaptureEl: HTMLElement | null = null;
 
 	getViewType(): string { return VIEW_TYPE_MLW_UNIFIED; }
 	getDisplayText(): string { return "Mind Like Water"; }
@@ -92,7 +93,6 @@ export class UnifiedTaskView extends BaseTaskView {
 		}
 	}
 	override refresh(): void { this.rebuildToolbar(); super.refresh(); }
-
 	private getRecentCompleted(): Task[] {
 		const days = this.store.getSettings().completedVisibilityDays;
 		const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
@@ -105,6 +105,8 @@ export class UnifiedTaskView extends BaseTaskView {
 	}
 
 	async renderContent(): Promise<void> {
+		// Skip background re-renders while user is typing in the inbox capture input
+		if (this.inboxCaptureEl?.contains(document.activeElement)) return;
 		this.reorder?.detach(); this.reorder = null;
 		const gen = ++this.renderGen;
 		this.listEl.empty();
@@ -153,6 +155,8 @@ export class UnifiedTaskView extends BaseTaskView {
 	private async renderInbox(gen: number): Promise<void> {
 		const tasks = this.store.getTasksByStatus(TaskStatus.Inbox)
 			.sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime());
+		if (this.inboxCaptureEl === null) this.inboxCaptureEl = renderInboxCapture(this.app, this.store, () => this.refresh());
+		this.listEl.appendChild(this.inboxCaptureEl);
 		if (tasks.length === 0) { this.renderEmpty(); return; }
 		this.renderContentHeader("Inbox", tasks.length);
 		for (const task of tasks) {
@@ -249,7 +253,6 @@ export class UnifiedTaskView extends BaseTaskView {
 			this.renderCompletedRow(task, text, task.area_of_focus ? [task.area_of_focus] : []);
 		}
 	}
-
 	private renderCompletedRow(task: Task, text: string, meta: string[]): void {
 		const item = this.listEl.createDiv("mlw-view-item mlw-view-item--completed");
 		item.createDiv({ text, cls: "mlw-view-item__text" });
@@ -259,7 +262,6 @@ export class UnifiedTaskView extends BaseTaskView {
 		}
 		item.addEventListener("click", () => void this.navigateToTask(task));
 	}
-
 	private getFocusTasks(): Task[] {
 		const today = localToday();
 		return this.store.getAllTasks().filter(t => {
@@ -271,15 +273,10 @@ export class UnifiedTaskView extends BaseTaskView {
 		});
 	}
 
-	private aofColor(aofName: string): AOFColor | undefined {
-		return this.store.getSettings().areasOfFocus.find(a => a.name === aofName)?.color;
-	}
-
 	private coloredBadge(text: string, aofName: string): Badge {
-		const color = this.aofColor(aofName);
+		const color = this.store.getSettings().areasOfFocus.find(a => a.name === aofName)?.color;
 		return color !== undefined ? { text, color } : text;
 	}
-
 	private buildFocusBadges(task: Task): Badge[] {
 		const today = localToday();
 		const badges: Badge[] = [];

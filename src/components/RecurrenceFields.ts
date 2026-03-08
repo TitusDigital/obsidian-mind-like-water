@@ -46,8 +46,8 @@ function matchPreset(presets: Preset[], rule: string | null): string {
 }
 
 /** Build the recurrence configuration section for the MetadataEditor popover. */
-export function buildRecurrenceSection(task: Task, store: DataStore, updateField: UpdateFn): HTMLElement {
-	const section = el("div", "mlw-recurrence-section");
+export function buildRecurrenceSection(task: Task, store: DataStore, updateField: UpdateFn): HTMLElement & { notifyStartDate: (d: string | null) => void } {
+	const section = el("div", "mlw-recurrence-section") as unknown as HTMLElement & { notifyStartDate: (d: string | null) => void };
 	const isRecurring = task.recurrence_rule !== null;
 
 	// Toggle row
@@ -64,17 +64,25 @@ export function buildRecurrenceSection(task: Task, store: DataStore, updateField
 	const config = el("div", "mlw-recurrence-config");
 	if (!isRecurring) config.style.display = "none";
 
-	// Frequency preset
-	const refDate = task.start_date !== null ? new Date(task.start_date + "T00:00:00") : new Date();
-	const presets = buildPresets(refDate);
+	// Frequency preset — tracks current start_date for day-of-week labels
+	let currentStartDate = task.start_date;
 	const presetGroup = el("div", "mlw-editor-fields__group");
 	presetGroup.appendChild(el("label", "mlw-editor-label", "Frequency"));
 	const presetSelect = document.createElement("select");
 	presetSelect.className = "mlw-editor-select";
-	presetSelect.appendChild(optionEl("", "Choose..."));
-	for (const p of presets) presetSelect.appendChild(optionEl(p.rrule, p.label));
-	presetSelect.appendChild(optionEl("custom", "Custom..."));
-	presetSelect.value = matchPreset(presets, task.recurrence_rule);
+
+	function rebuildPresetOptions(): void {
+		const refDate = currentStartDate !== null ? new Date(currentStartDate + "T00:00:00") : new Date();
+		const presets = buildPresets(refDate);
+		const prev = presetSelect.value;
+		presetSelect.innerHTML = "";
+		presetSelect.appendChild(optionEl("", "Choose..."));
+		for (const p of presets) presetSelect.appendChild(optionEl(p.rrule, p.label));
+		presetSelect.appendChild(optionEl("custom", "Custom..."));
+		presetSelect.value = matchPreset(presets, prev || task.recurrence_rule);
+	}
+	rebuildPresetOptions();
+	section.notifyStartDate = (d: string | null) => { currentStartDate = d; rebuildPresetOptions(); };
 	config.appendChild(presetGroup);
 	presetGroup.appendChild(presetSelect);
 
@@ -166,14 +174,18 @@ export function buildRecurrenceSection(task: Task, store: DataStore, updateField
 	toggle.addEventListener("change", () => {
 		if (toggle.checked) {
 			config.style.display = "";
-			if (task.start_date === null) updateField("start_date", localToday());
+			if (task.start_date === null) {
+				const today = localToday();
+				currentStartDate = today;
+				updateField("start_date", today);
+				rebuildPresetOptions();
+			}
 			updateField("recurrence_template_id", task.id);
 			updateField("recurrence_spawn_count", 1);
 			updateField("recurrence_type", "fixed");
 			if (task.recurrence_rule === null) {
-				const defaultRule = presets[0]?.rrule ?? "RRULE:FREQ=DAILY";
-				updateField("recurrence_rule", defaultRule);
-				presetSelect.value = defaultRule;
+				updateField("recurrence_rule", "RRULE:FREQ=DAILY");
+				presetSelect.value = "RRULE:FREQ=DAILY";
 			}
 		} else {
 			config.style.display = "none";

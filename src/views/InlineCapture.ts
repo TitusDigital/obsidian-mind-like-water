@@ -1,6 +1,7 @@
 import type { App } from "obsidian";
 import { Notice } from "obsidian";
 import type { DataStore } from "data/DataStore";
+import { TaskStatus } from "data/models";
 import type { GroupContext } from "views/GroupUtils";
 import { resolveCaptureTarget } from "capture/dailyNotePath";
 import { captureTask, type CaptureOptions } from "capture/captureTask";
@@ -68,6 +69,40 @@ export function renderInlineCapture(
 	});
 
 	requestAnimationFrame(() => input.focus());
+}
+
+/**
+ * Persistent capture input for the Inbox tab. Returns a reusable element
+ * that survives re-renders. Enter → capture, clear, stay focused. Escape → blur.
+ */
+export function renderInboxCapture(app: App, store: DataStore, onBlur: () => void): HTMLElement {
+	const wrapper = document.createElement("div");
+	wrapper.className = "mlw-inline-capture mlw-inbox-capture";
+
+	const input = document.createElement("input");
+	input.type = "text";
+	input.className = "mlw-inline-capture__input";
+	input.placeholder = "Add to inbox…";
+	wrapper.appendChild(input);
+
+	input.addEventListener("keydown", (e) => {
+		if (e.key === "Enter") {
+			e.preventDefault();
+			const text = input.value.trim();
+			if (text === "") return;
+			input.disabled = true;
+			const ctx: GroupContext = { status: TaskStatus.Inbox };
+			void doCapture(app, store, text, ctx).then(() => {
+				input.value = "";
+				input.disabled = false;
+				input.focus();
+			});
+		} else if (e.key === "Escape") {
+			input.blur();
+		}
+	});
+	input.addEventListener("blur", onBlur);
+	return wrapper;
 }
 
 async function doCapture(

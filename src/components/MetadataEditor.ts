@@ -130,16 +130,20 @@ export class MetadataEditor {
 		this.projectRow = this.el("div", "mlw-editor-fields__group") as HTMLDivElement;
 		this.buildProjectFieldContent();
 		c.appendChild(row(this.aofGroup, this.projectRow));
+		const recurrenceEl = buildRecurrenceSection(this.task, this.store, (f, v) => this.updateField(f, v));
 		c.appendChild(row(
 			createDateGroup("Due Date", this.task.due_date, (v) => this.updateField("due_date", v || null)),
-			createDateGroup("Start Date", this.task.start_date, (v) => this.updateField("start_date", v || null)),
+			createDateGroup("Start Date", this.task.start_date, (v) => {
+				this.updateField("start_date", v || null);
+				recurrenceEl.notifyStartDate(v || null);
+			}),
 		));
 		c.appendChild(row(
 			createSelectGroup("Energy", this.task.energy ?? "", { "": "None", ...ENERGY_LABELS }, (v) => this.updateField("energy", v === "" ? null : v)),
 			this.buildContextField(),
 		));
 		c.appendChild(this.buildStarToggle());
-		c.appendChild(buildRecurrenceSection(this.task, this.store, (f, v) => this.updateField(f, v)));
+		c.appendChild(recurrenceEl);
 		return c;
 	}
 
