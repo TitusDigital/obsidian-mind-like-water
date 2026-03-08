@@ -234,7 +234,8 @@ export default class MindLikeWaterPlugin extends Plugin {
 
 	private async ensureProjectFolder(): Promise<void> {
 		try {
-			const folderPath = normalizePath(this.store.getSettings().projectFolder);
+			const folderPath = this.store.getSettings().projectFolder;
+			if (folderPath === "") return;
 			const exists = await this.app.vault.adapter.exists(folderPath);
 			if (!exists) await this.app.vault.createFolder(folderPath);
 		} catch (e) { console.error("MLW: Failed to create project folder", e); }

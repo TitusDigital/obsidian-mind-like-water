@@ -288,12 +288,12 @@ export class DataStore {
 
 	/** Create a new project markdown file with frontmatter. */
 	async createProjectFile(aof: string, name: string, outcome: string, status = "active"): Promise<void> {
-		const folder = normalizePath(this.data.settings.projectFolder);
+		const folder = this.data.settings.projectFolder;
 		if (!(await this.plugin.app.vault.adapter.exists(folder))) {
 			await this.plugin.app.vault.createFolder(folder);
 		}
 		const now = new Date().toISOString();
 		const content = `---\nmlw_type: project\ntitle: "${name}"\nstatus: ${status}\narea_of_focus: "${aof}"\nsuccessful_outcome: "${outcome}"\nsort_order: 0\ncreated: ${now}\nmodified: ${now}\n---\n\n## Successful Outcome\n\n${outcome}\n\n## Tasks\n\n\`\`\`mlw-project-tasks\n\`\`\`\n\n## Notes\n\n`;
-		await this.plugin.app.vault.create(normalizePath(`${folder}/${name}.md`), content);
+		await this.plugin.app.vault.create(`${folder}/${name}.md`, content);
 	}
 }
