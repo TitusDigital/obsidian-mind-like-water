@@ -87,12 +87,10 @@ class MLWDecorationPlugin {
 					);
 				}
 			} else if (canTrackLine(lineText)) {
-				// Untracked checkbox — show + Track button at end of text
-				const trimmedEnd = line.from + lineText.trimEnd().length;
-
+				// Untracked checkbox — show + Track button at end of line
 				builder.add(
-					trimmedEnd,
-					trimmedEnd,
+					line.to,
+					line.to,
 					Decoration.widget({
 						widget: new TrackWidget(line.from, store),
 						side: 1,
