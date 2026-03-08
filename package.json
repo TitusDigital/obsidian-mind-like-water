@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-mind-like-water",
-	"version": "1.0.5",
+	"version": "1.0.6",
 	"description": "GTD-powered task management for Obsidian",
 	"main": "main.js",
 	"type": "module",
