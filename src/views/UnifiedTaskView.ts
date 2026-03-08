@@ -134,7 +134,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		for (const { name, color, tasks: gt } of this.groupTasks(allTasks, ViewState.getInstance().getGroupMode())) {
 			const active = gt.filter(t => t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped);
 			const done = gt.filter(t => t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped);
-			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length, this.groupContext(name, TaskStatus.NextAction));
+			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length, this.groupContext(name, TaskStatus.NextAction, true));
 			active.sort(focusSort);
 			for (const task of active) {
 				if (this.isStaleRender(gen)) return;
@@ -290,11 +290,11 @@ export class UnifiedTaskView extends BaseTaskView {
 		return badges;
 	}
 
-	private groupContext(groupName: string, status: TaskStatus): GroupContext {
+	private groupContext(groupName: string, status: TaskStatus, starred?: boolean): GroupContext {
 		const mode = ViewState.getInstance().getGroupMode();
-		if (mode === "aof") return { aof: groupName, status };
-		if (mode === "project") return { project: groupName, aof: this.store.getProjectAOF(groupName), status };
-		return { status };
+		if (mode === "aof") return { aof: groupName, status, starred };
+		if (mode === "project") return { project: groupName, aof: this.store.getProjectAOF(groupName), status, starred };
+		return { status, starred };
 	}
 
 }

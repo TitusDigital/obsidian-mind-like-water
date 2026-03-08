@@ -9,6 +9,7 @@ export interface CaptureDefaults {
 	status?: TaskStatus;
 	aof?: string;
 	project?: string;
+	starred?: boolean;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -37,6 +38,7 @@ export class QuickCaptureModal extends Modal {
 		if (this.defaults !== undefined) {
 			const bar = contentEl.createDiv("mlw-capture-defaults");
 			if (this.defaults.status !== undefined) bar.createSpan({ text: STATUS_LABELS[this.defaults.status] ?? this.defaults.status, cls: "mlw-capture-defaults__badge" });
+			if (this.defaults.starred === true) bar.createSpan({ text: "\u2605 Starred", cls: "mlw-capture-defaults__badge" });
 			if (this.defaults.aof !== undefined) bar.createSpan({ text: this.defaults.aof, cls: "mlw-capture-defaults__badge" });
 			if (this.defaults.project !== undefined) bar.createSpan({ text: this.defaults.project, cls: "mlw-capture-defaults__badge" });
 		}
@@ -73,6 +75,7 @@ export class QuickCaptureModal extends Modal {
 			status: this.defaults.status,
 			area_of_focus: this.defaults.aof,
 			project: this.defaults.project,
+			starred: this.defaults.starred,
 		} : undefined;
 
 		await captureTask(this.app, this.store, text, targetFile, options);

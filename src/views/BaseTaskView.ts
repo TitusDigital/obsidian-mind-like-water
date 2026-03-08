@@ -109,7 +109,7 @@ export abstract class BaseTaskView extends ItemView {
 				e.preventDefault();
 				e.stopPropagation();
 				if (e.shiftKey) {
-					const defaults: CaptureDefaults = { status: context.status, aof: context.aof, project: context.project };
+					const defaults: CaptureDefaults = { status: context.status, aof: context.aof, project: context.project, starred: context.starred };
 					new QuickCaptureModal(this.app, this.store, undefined, defaults).open();
 				} else {
 					renderInlineCapture(group, this.app, this.store, context, () => this.refresh());

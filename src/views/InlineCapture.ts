@@ -82,6 +82,7 @@ async function doCapture(
 			status: context.status,
 			area_of_focus: context.aof,
 			project: context.project,
+			starred: context.starred,
 		};
 		await captureTask(app, store, text, targetFile, options);
 		new Notice(`Captured: ${text}`);

@@ -7,6 +7,7 @@ export interface GroupContext {
 	aof?: string;
 	project?: string;
 	status?: TaskStatus;
+	starred?: boolean;
 	createProject?: boolean;
 }
 

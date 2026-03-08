@@ -13,6 +13,7 @@ export interface CaptureOptions {
 	status?: TaskStatus;
 	area_of_focus?: string;
 	project?: string;
+	starred?: boolean;
 }
 
 /**
@@ -122,6 +123,7 @@ export async function captureTask(
 		status: options?.status ?? TaskStatus.Inbox,
 		area_of_focus: options?.area_of_focus ?? "",
 		project: options?.project ?? null,
+		starred: options?.starred ?? false,
 	});
 
 	return { taskId: id, filePath: targetFile.path, lineNumber };
