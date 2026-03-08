@@ -31,8 +31,8 @@ async function processFile(file: TFile, store: DataStore, plugin: Plugin): Promi
 	const content = await plugin.app.vault.cachedRead(file);
 	const lines = content.split("\n");
 
-	for (const line of lines) {
-		const match = MLW_LINE_RE.exec(line);
+	for (let i = 0; i < lines.length; i++) {
+		const match = MLW_LINE_RE.exec(lines[i]!);
 		if (match === null) continue;
 
 		const checked = match[1] !== " ";
@@ -43,6 +43,11 @@ async function processFile(file: TFile, store: DataStore, plugin: Plugin): Promi
 		const task = store.getTask(id);
 		if (task === undefined) continue;
 
+		// Repair stale source_file or drifted source_line
+		const lineNum = i + 1;
+		if (task.source_file !== file.path || task.source_line !== lineNum) {
+			store.updateTask(id, { source_file: file.path, source_line: lineNum });
+		}
 		if (text !== null && text !== task.cached_text) {
 			store.updateTask(id, { cached_text: text });
 		}

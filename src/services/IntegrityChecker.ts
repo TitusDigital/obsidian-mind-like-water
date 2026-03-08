@@ -14,32 +14,38 @@ export interface IntegrityReport {
 	autoCleanedCount: number;
 }
 
+/** Location of a task's mlw comment in the vault. */
+interface TaskLocation { file: string; line: number; }
+
 /** Scan vault and cross-reference with DataStore. Composes scan + report. */
 export async function runIntegrityCheck(
 	app: App, store: DataStore,
 ): Promise<IntegrityReport> {
-	const vaultIds = await scanVaultForMLWIds(app);
-	return buildIntegrityReport(vaultIds, store);
+	const vaultLocations = await scanVaultForMLWIds(app);
+	return buildIntegrityReport(vaultLocations, store);
 }
 
-/** Scan all markdown files for `<!-- mlw:XXXX -->` patterns. */
-async function scanVaultForMLWIds(app: App): Promise<Set<string>> {
-	const ids = new Set<string>();
+/** Scan all markdown files for `<!-- mlw:XXXX -->` patterns. Returns ID → location map. */
+async function scanVaultForMLWIds(app: App): Promise<Map<string, TaskLocation>> {
+	const locations = new Map<string, TaskLocation>();
 	for (const file of app.vault.getMarkdownFiles()) {
 		const content = await app.vault.cachedRead(file);
-		const re = new RegExp(MLW_ID_RE.source, "g");
-		let match: RegExpExecArray | null;
-		while ((match = re.exec(content)) !== null) {
-			const id = match[1];
-			if (id !== undefined) ids.add(id);
+		const lines = content.split("\n");
+		for (let i = 0; i < lines.length; i++) {
+			const re = new RegExp(MLW_ID_RE.source, "g");
+			let match: RegExpExecArray | null;
+			while ((match = re.exec(lines[i]!)) !== null) {
+				const id = match[1];
+				if (id !== undefined) locations.set(id, { file: file.path, line: i + 1 });
+			}
 		}
 	}
-	return ids;
+	return locations;
 }
 
-/** Cross-reference vault IDs with DataStore. Pure logic, unit-testable. */
+/** Cross-reference vault IDs with DataStore. Repairs stale paths and detects orphans. */
 export function buildIntegrityReport(
-	vaultIds: Set<string>, store: DataStore,
+	vaultLocations: Map<string, TaskLocation>, store: DataStore,
 ): IntegrityReport {
 	const settings = store.getSettings();
 	const gracePeriodMs = settings.orphanGracePeriodDays * 24 * 60 * 60 * 1000;
@@ -49,23 +55,27 @@ export function buildIntegrityReport(
 	let autoCleanedCount = 0;
 
 	for (const task of store.getAllTasks()) {
-		if (task.status === TaskStatus.Completed || task.status === TaskStatus.Dropped) continue;
-		if (!vaultIds.has(task.id)) {
-			const age = now - new Date(task.modified).getTime();
-			if (age > gracePeriodMs) {
-				store.deleteTask(task.id);
-				autoCleanedCount++;
-			} else {
-				orphanedTasks.push(task);
+		const loc = vaultLocations.get(task.id);
+		if (loc !== undefined) {
+			// Repair stale source_file or drifted source_line
+			if (task.source_file !== loc.file || task.source_line !== loc.line) {
+				store.updateTask(task.id, { source_file: loc.file, source_line: loc.line });
 			}
+			continue;
+		}
+		if (task.status === TaskStatus.Completed || task.status === TaskStatus.Dropped) continue;
+		const age = now - new Date(task.modified).getTime();
+		if (age > gracePeriodMs) {
+			store.deleteTask(task.id);
+			autoCleanedCount++;
+		} else {
+			orphanedTasks.push(task);
 		}
 	}
 
 	const staleCommentIds: string[] = [];
-	for (const id of vaultIds) {
-		if (store.getTask(id) === undefined) {
-			staleCommentIds.push(id);
-		}
+	for (const id of vaultLocations.keys()) {
+		if (store.getTask(id) === undefined) staleCommentIds.push(id);
 	}
 
 	return { orphanedTasks, staleCommentIds, autoCleanedCount };

@@ -148,6 +148,18 @@ export default class MindLikeWaterPlugin extends Plugin {
 			}),
 		);
 
+		// ── File Rename → update source_file on affected tasks ──
+		this.registerEvent(
+			this.app.vault.on("rename", (file, oldPath) => {
+				if (!(file instanceof TFile) || file.extension !== "md") return;
+				for (const task of this.store.getAllTasks()) {
+					if (task.source_file === oldPath) {
+						this.store.updateTask(task.id, { source_file: file.path });
+					}
+				}
+			}),
+		);
+
 		// ── Reactive Updates ──────────────────────────────────
 		this.store.setOnChange(() => this.onTasksChanged());
 

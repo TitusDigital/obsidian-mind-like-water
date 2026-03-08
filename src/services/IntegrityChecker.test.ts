@@ -10,6 +10,7 @@ function mockStore(tasks: MockTask[], graceDays = 7) {
 		getAllTasks: () => tasks,
 		getTask: (id: string) => tasks.find(t => t.id === id),
 		deleteTask: vi.fn(),
+		updateTask: vi.fn(),
 	};
 }
 
@@ -24,7 +25,7 @@ describe("buildIntegrityReport", () => {
 			{ id: "abc123", status: TaskStatus.NextAction, modified: "2026-02-27T12:00:00Z" },
 		]);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const report = buildIntegrityReport(new Set(), store as any);
+		const report = buildIntegrityReport(new Map(), store as any);
 		expect(report.orphanedTasks).toHaveLength(1);
 		expect(report.orphanedTasks[0]?.id).toBe("abc123");
 		expect(report.autoCleanedCount).toBe(0);
@@ -35,7 +36,7 @@ describe("buildIntegrityReport", () => {
 			{ id: "old123", status: TaskStatus.NextAction, modified: "2026-02-10T12:00:00Z" },
 		]);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const report = buildIntegrityReport(new Set(), store as any);
+		const report = buildIntegrityReport(new Map(), store as any);
 		expect(report.orphanedTasks).toHaveLength(0);
 		expect(report.autoCleanedCount).toBe(1);
 		expect(store.deleteTask).toHaveBeenCalledWith("old123");
@@ -47,14 +48,14 @@ describe("buildIntegrityReport", () => {
 			{ id: "drop01", status: TaskStatus.Dropped, modified: "2026-02-10T12:00:00Z" },
 		]);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const report = buildIntegrityReport(new Set(), store as any);
+		const report = buildIntegrityReport(new Map(), store as any);
 		expect(report.orphanedTasks).toHaveLength(0);
 		expect(report.autoCleanedCount).toBe(0);
 	});
 
 	it("detects stale comment IDs not in DataStore", () => {
 		const store = mockStore([]);
-		const vaultIds = new Set(["xyz789", "abc456"]);
+		const vaultIds = new Map([["xyz789", { file: "a.md", line: 1 }], ["abc456", { file: "b.md", line: 2 }]]);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const report = buildIntegrityReport(vaultIds, store as any);
 		expect(report.staleCommentIds).toHaveLength(2);
@@ -67,7 +68,7 @@ describe("buildIntegrityReport", () => {
 			{ id: "new123", status: TaskStatus.Inbox, modified: "2026-02-25T12:00:00Z" },
 		]);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		const report = buildIntegrityReport(new Set(), store as any);
+		const report = buildIntegrityReport(new Map(), store as any);
 		expect(report.orphanedTasks).toHaveLength(1);
 		expect(report.autoCleanedCount).toBe(0);
 		expect(store.deleteTask).not.toHaveBeenCalled();
