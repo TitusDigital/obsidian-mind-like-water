@@ -1,4 +1,5 @@
 import { type Task } from "data/models";
+import type { DataStore } from "data/DataStore";
 import { ViewState } from "views/ViewState";
 
 export type ChipState = "off" | "include" | "exclude";
@@ -22,6 +23,7 @@ export class FilterBar {
 
 	constructor(
 		parentEl: HTMLElement,
+		private readonly store: DataStore,
 		private readonly onFilterChange: () => void,
 	) {
 		this.container = parentEl.createDiv("mlw-filter-bar");
@@ -106,7 +108,17 @@ export class FilterBar {
 					text: label,
 					cls: `mlw-filter-chip mlw-filter-chip--${state}`,
 				});
-				chip.addEventListener("click", (e) => this.cycleChip(dim.key, chipKey, e));
+				if (dim.key === "aof" || dim.key === "project") {
+				const aofName = dim.key === "aof" ? value : this.store.getProjectAOF(value);
+				if (aofName) {
+					const c = this.store.getAOFColor(aofName);
+					chip.style.backgroundColor = c.bg;
+					chip.style.color = c.text;
+					chip.style.borderColor = c.border;
+					if (state === "off") chip.style.opacity = "0.65";
+				}
+			}
+			chip.addEventListener("click", (e) => this.cycleChip(dim.key, chipKey, e));
 			}
 		}
 	}

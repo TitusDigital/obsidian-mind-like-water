@@ -88,7 +88,7 @@ export class UnifiedTaskView extends BaseTaskView {
 	private rebuildControls(): void {
 		this.controlsEl.empty();
 		if (TAB_CFG[this.activeTab].filter) {
-			this.filterBar = new FilterBar(this.controlsEl, () => void this.renderContent());
+			this.filterBar = new FilterBar(this.controlsEl, this.store, () => void this.renderContent());
 		}
 	}
 	override refresh(): void { this.rebuildToolbar(); super.refresh(); }
