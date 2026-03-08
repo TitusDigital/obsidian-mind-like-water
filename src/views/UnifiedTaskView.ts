@@ -16,11 +16,11 @@ type TabId = "focus" | "inbox" | "next" | "scheduled" | "someday" | "completed" 
 const TAB_ORDER: TabId[] = ["focus", "inbox", "next", "scheduled", "someday", "completed", "projects", "review"];
 
 const TAB_CFG: Record<TabId, { label: string; pill: string; filter: boolean; completed: boolean; group: GroupMode | false; empty: string; hint: string }> = {
-	focus: { label: "Focus", pill: "Focus", filter: false, completed: true, group: "none", empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
+	focus: { label: "Focus", pill: "Focus", filter: true, completed: true, group: "none", empty: "Nothing to focus on right now.", hint: "Star tasks or set due dates to see them here." },
 	inbox: { label: "Inbox", pill: "Inbox", filter: false, completed: false, group: false, empty: "No unclarified tasks.", hint: "Use Ctrl+Shift+Q to capture a new task." },
 	next: { label: "Next", pill: "Next", filter: true, completed: true, group: "aof", empty: "No next actions.", hint: "Clarify tasks from your Inbox to get started." },
 	scheduled: { label: "Scheduled", pill: "Sched", filter: true, completed: false, group: false, empty: "No scheduled tasks.", hint: "Set a task's status to Scheduled and assign a start date." },
-	someday: { label: "Someday", pill: "Someday", filter: false, completed: false, group: "aof", empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
+	someday: { label: "Someday", pill: "Someday", filter: true, completed: false, group: "aof", empty: "No someday/maybe tasks.", hint: "Set a task's status to Someday to park it here." },
 	completed: { label: "Completed", pill: "Done", filter: false, completed: false, group: false, empty: "No completed tasks in the last 30 days.", hint: "Complete a task to see it here." },
 	projects: { label: "Projects", pill: "Projects", filter: false, completed: false, group: false, empty: "No active projects.", hint: "Create a project from the metadata editor." },
 	review: { label: "Review", pill: "Review", filter: false, completed: false, group: false, empty: "Run a review to check on your system.", hint: "Review surfaces items needing attention." },
@@ -121,15 +121,14 @@ export class UnifiedTaskView extends BaseTaskView {
 	}
 
 	private async renderFocus(gen: number): Promise<void> {
-		const tasks = this.filterByActiveAOF(this.getFocusTasks());
+		let tasks = this.filterByActiveAOF(this.getFocusTasks());
+		if (this.filterBar !== null) { this.filterBar.rebuild(tasks); tasks = this.filterBar.applyFilters(tasks); }
 		const recent = this.getRecentCompleted();
 		const completed = this.showCompleted ? recent : [];
 		if (tasks.length === 0 && completed.length === 0) { this.renderEmpty(); return; }
 		this.renderContentHeader("Focus", tasks.length, this.completedToggle(recent.length), true);
-		const focusSort = (a: Task, b: Task): number => {
-			if (a.starred !== b.starred) return a.starred ? -1 : 1;
-			return (a.due_date ?? "\uffff").localeCompare(b.due_date ?? "\uffff") || a.sort_order - b.sort_order;
-		};
+		const focusSort = (a: Task, b: Task): number =>
+			a.starred !== b.starred ? (a.starred ? -1 : 1) : (a.due_date ?? "\uffff").localeCompare(b.due_date ?? "\uffff") || a.sort_order - b.sort_order;
 		const allTasks = [...tasks, ...completed];
 		for (const { name, color, tasks: gt } of this.groupTasks(allTasks, ViewState.getInstance().getGroupMode())) {
 			const active = gt.filter(t => t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped);
@@ -218,7 +217,8 @@ export class UnifiedTaskView extends BaseTaskView {
 	}
 
 	private async renderSomeday(gen: number): Promise<void> {
-		const tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Someday));
+		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Someday));
+		if (this.filterBar !== null) { this.filterBar.rebuild(tasks); tasks = this.filterBar.applyFilters(tasks); }
 		if (tasks.length === 0) { this.renderEmpty(); return; }
 		this.renderContentHeader("Someday", tasks.length, undefined, true);
 		for (const { name, color, tasks: gt } of this.groupTasks(tasks, ViewState.getInstance().getGroupMode())) {
