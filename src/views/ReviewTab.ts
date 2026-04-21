@@ -66,7 +66,7 @@ export function renderReview(
 
 	// 3. Overdue tasks
 	const overdue = allTasks.filter(t =>
-		t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped &&
+		t.status !== TaskStatus.Done && t.status !== TaskStatus.Dropped &&
 		t.due_date !== null && t.due_date < today,
 	);
 	renderSection(listEl, "Overdue Tasks", overdue.length, (body) => {
@@ -75,7 +75,7 @@ export function renderReview(
 	});
 
 	// 4. Stale next actions (untouched 14+ days)
-	const staleActions = store.getTasksByStatus(TaskStatus.NextAction)
+	const staleActions = store.getTasksByStatus(TaskStatus.Active)
 		.filter(t => daysSince(t.modified) >= 14);
 	renderSection(listEl, "Stale Next Actions", staleActions.length, (body) => {
 		if (staleActions.length === 0) { body.createDiv({ text: "All next actions are fresh.", cls: "mlw-review-section__empty" }); return; }
@@ -117,7 +117,7 @@ export function renderReview(
 				e.stopPropagation();
 				switch (select.value) {
 					case "inbox": store.updateTask(task.id, { status: TaskStatus.Inbox }); break;
-					case "next": store.updateTask(task.id, { status: TaskStatus.NextAction }); break;
+					case "next": store.updateTask(task.id, { status: TaskStatus.Active }); break;
 					case "drop": store.updateTask(task.id, { status: TaskStatus.Dropped }); break;
 					case "delete":
 						if (isRecurringTask(task)) { new RecurrenceDeleteModal(app, store, task, () => {}).open(); }
@@ -138,7 +138,7 @@ export function renderReview(
 
 	// 7. Completed since last review
 	const cutoff = settings.lastReviewDate ?? "";
-	const completedSince = store.getTasksByStatus(TaskStatus.Completed)
+	const completedSince = store.getTasksByStatus(TaskStatus.Done)
 		.filter(t => t.completed_date !== null && t.completed_date >= cutoff)
 		.sort((a, b) => (b.completed_date ?? "").localeCompare(a.completed_date ?? ""));
 	renderSection(listEl, "Completed Since Last Review", completedSince.length, (body) => {
@@ -186,7 +186,7 @@ function renderReviewTaskRow(parent: HTMLElement, task: Task, store: DataStore, 
 		switch (select.value) {
 			case "complete": store.completeTask(task.id); break;
 			case "drop": store.updateTask(task.id, { status: TaskStatus.Dropped }); break;
-			case "next": store.updateTask(task.id, { status: TaskStatus.NextAction }); break;
+			case "next": store.updateTask(task.id, { status: TaskStatus.Active }); break;
 			case "schedule": store.updateTask(task.id, { status: TaskStatus.Scheduled }); break;
 		}
 	});

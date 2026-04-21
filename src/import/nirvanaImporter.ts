@@ -1,6 +1,6 @@
 import { normalizePath, TFile, type App } from "obsidian";
 import type { DataStore } from "data/DataStore";
-import { deriveAOFColor } from "data/models";
+import { deriveAOFColor, TaskStatus } from "data/models";
 import { NirvanaType, NirvanaState, type NirvanaItem, type ImportOptions, type ImportResult, type ImportProgress } from "./nirvanaTypes";
 import { mapTags, extractOutcome, mapTimestamp, prepareTask } from "./nirvanaMapper";
 
@@ -173,7 +173,7 @@ async function writeTaskFile(
 			const prepared = prepareTask(item, aofNames);
 			if (prepared === null) { result.tasksSkipped++; continue; }
 
-			const checkbox = isCompleted || prepared.fields.status === "completed" || prepared.fields.status === "dropped"
+			const checkbox = isCompleted || prepared.fields.status === TaskStatus.Done || prepared.fields.status === TaskStatus.Dropped
 				? "- [x]" : "- [ ]";
 			taskLineMap.push({ lineIdx: lines.length, item });
 			lines.push(`${checkbox} ${prepared.text} <!-- mlw:PLACEHOLDER -->`);
@@ -238,7 +238,7 @@ async function appendToProjectFile(
 		if (prepared === null) { result.tasksSkipped++; continue; }
 
 		const id = store.generateId();
-		const checkbox = prepared.fields.status === "completed" || prepared.fields.status === "dropped"
+		const checkbox = prepared.fields.status === TaskStatus.Done || prepared.fields.status === TaskStatus.Dropped
 			? "- [x]" : "- [ ]";
 		entries.push({ offset: newLines.length, id, item });
 		newLines.push(`${checkbox} ${prepared.text} <!-- mlw:${id} -->`);

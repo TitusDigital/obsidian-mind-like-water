@@ -78,7 +78,7 @@ async function spawnInstance(
 	store: DataStore, sourceTask: Task, newStartDate: Date,
 ): Promise<Task> {
 	const today = parseLocalDate(localToday());
-	const status = newStartDate > today ? TaskStatus.Scheduled : TaskStatus.NextAction;
+	const status = newStartDate > today ? TaskStatus.Scheduled : TaskStatus.Active;
 	let newDueDate: string | null = null;
 	if (sourceTask.due_date !== null && sourceTask.start_date !== null) {
 		const offsetMs = parseLocalDate(sourceTask.due_date).getTime() - parseLocalDate(sourceTask.start_date).getTime();

@@ -48,9 +48,9 @@ describe("DataStore", () => {
 			const store = createStore();
 			const task = store.createTask({
 				source_file: "test.md", source_line: 5,
-				status: TaskStatus.NextAction, starred: true, area_of_focus: "Work",
+				status: TaskStatus.Active, starred: true, area_of_focus: "Work",
 			});
-			expect(task.status).toBe(TaskStatus.NextAction);
+			expect(task.status).toBe(TaskStatus.Active);
 			expect(task.starred).toBe(true);
 			expect(task.area_of_focus).toBe("Work");
 		});
@@ -123,7 +123,7 @@ describe("DataStore", () => {
 			store.createTask({ id: "cmp001", source_file: "f.md", source_line: 1 });
 			const result = store.completeTask("cmp001");
 			expect(result).toBeDefined();
-			expect(result!.status).toBe(TaskStatus.Completed);
+			expect(result!.status).toBe(TaskStatus.Done);
 			expect(result!.completed_date).toBeTruthy();
 		});
 	});
@@ -132,11 +132,11 @@ describe("DataStore", () => {
 		it("filters tasks by status", () => {
 			const store = createStore();
 			store.createTask({ source_file: "f.md", source_line: 1, status: TaskStatus.Inbox });
-			store.createTask({ source_file: "f.md", source_line: 2, status: TaskStatus.NextAction });
+			store.createTask({ source_file: "f.md", source_line: 2, status: TaskStatus.Active });
 			store.createTask({ source_file: "f.md", source_line: 3, status: TaskStatus.Inbox });
 			expect(store.getTasksByStatus(TaskStatus.Inbox)).toHaveLength(2);
-			expect(store.getTasksByStatus(TaskStatus.NextAction)).toHaveLength(1);
-			expect(store.getTasksByStatus(TaskStatus.Completed)).toHaveLength(0);
+			expect(store.getTasksByStatus(TaskStatus.Active)).toHaveLength(1);
+			expect(store.getTasksByStatus(TaskStatus.Done)).toHaveLength(0);
 		});
 	});
 
@@ -154,10 +154,47 @@ describe("DataStore", () => {
 	describe("getStarredCount", () => {
 		it("counts active starred tasks only", () => {
 			const store = createStore();
-			store.createTask({ source_file: "f.md", source_line: 1, starred: true, status: TaskStatus.NextAction });
-			store.createTask({ source_file: "f.md", source_line: 2, starred: true, status: TaskStatus.Completed });
-			store.createTask({ source_file: "f.md", source_line: 3, starred: false, status: TaskStatus.NextAction });
+			store.createTask({ source_file: "f.md", source_line: 1, starred: true, status: TaskStatus.Active });
+			store.createTask({ source_file: "f.md", source_line: 2, starred: true, status: TaskStatus.Done });
+			store.createTask({ source_file: "f.md", source_line: 3, starred: false, status: TaskStatus.Active });
 			expect(store.getStarredCount()).toBe(1);
+		});
+	});
+
+	describe("waiting_date auto-set", () => {
+		it("sets waiting_date when a task transitions into Waiting", () => {
+			const store = createStore();
+			const task = store.createTask({ source_file: "f.md", source_line: 1, status: TaskStatus.Active });
+			expect(task.waiting_date).toBeNull();
+			const updated = store.updateTask(task.id, { status: TaskStatus.Waiting });
+			expect(updated!.status).toBe(TaskStatus.Waiting);
+			expect(updated!.waiting_date).toBeTruthy();
+		});
+
+		it("does not overwrite waiting_date when the caller provides one", () => {
+			const store = createStore();
+			const task = store.createTask({ source_file: "f.md", source_line: 1, status: TaskStatus.Active });
+			const preset = "2026-01-01T00:00:00.000Z";
+			const updated = store.updateTask(task.id, { status: TaskStatus.Waiting, waiting_date: preset });
+			expect(updated!.waiting_date).toBe(preset);
+		});
+
+		it("does not clear waiting_date when transitioning away from Waiting", () => {
+			const store = createStore();
+			const task = store.createTask({ source_file: "f.md", source_line: 1, status: TaskStatus.Waiting });
+			const original = task.waiting_date;
+			expect(original).toBeTruthy();
+			const updated = store.updateTask(task.id, { status: TaskStatus.Active });
+			expect(updated!.status).toBe(TaskStatus.Active);
+			expect(updated!.waiting_date).toBe(original);
+		});
+
+		it("does not re-set waiting_date if the task is already Waiting", () => {
+			const store = createStore();
+			const task = store.createTask({ source_file: "f.md", source_line: 1, status: TaskStatus.Waiting });
+			const original = task.waiting_date;
+			const updated = store.updateTask(task.id, { status: TaskStatus.Waiting, starred: true });
+			expect(updated!.waiting_date).toBe(original);
 		});
 	});
 

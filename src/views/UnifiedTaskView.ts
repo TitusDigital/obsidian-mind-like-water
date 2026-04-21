@@ -96,7 +96,7 @@ export class UnifiedTaskView extends BaseTaskView {
 	private getRecentCompleted(): Task[] {
 		const days = this.store.getSettings().completedVisibilityDays;
 		const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-		return this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Completed))
+		return this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Done))
 			.filter(t => t.completed_date !== null && t.completed_date >= cutoff)
 			.sort((a, b) => (b.completed_date ?? "").localeCompare(a.completed_date ?? ""));
 	}
@@ -133,9 +133,9 @@ export class UnifiedTaskView extends BaseTaskView {
 			a.starred !== b.starred ? (a.starred ? -1 : 1) : (a.due_date ?? "\uffff").localeCompare(b.due_date ?? "\uffff") || a.sort_order - b.sort_order;
 		const allTasks = [...tasks, ...completed];
 		for (const { name, color, tasks: gt } of this.groupTasks(allTasks, ViewState.getInstance().getGroupMode())) {
-			const active = gt.filter(t => t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped);
-			const done = gt.filter(t => t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped);
-			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length, this.groupContext(name, TaskStatus.NextAction, true));
+			const active = gt.filter(t => t.status !== TaskStatus.Done && t.status !== TaskStatus.Dropped);
+			const done = gt.filter(t => t.status === TaskStatus.Done || t.status === TaskStatus.Dropped);
+			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length, this.groupContext(name, TaskStatus.Active, true));
 			active.sort(focusSort);
 			for (const task of active) {
 				if (this.isStaleRender(gen)) return;
@@ -167,7 +167,7 @@ export class UnifiedTaskView extends BaseTaskView {
 	}
 
 	private async renderNextActions(gen: number): Promise<void> {
-		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.NextAction));
+		let tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Active));
 		if (this.filterBar !== null) { this.filterBar.rebuild(tasks); tasks = this.filterBar.applyFilters(tasks); }
 		const recent = this.getRecentCompleted();
 		const completed = this.showCompleted ? recent : [];
@@ -176,9 +176,9 @@ export class UnifiedTaskView extends BaseTaskView {
 		const today = localToday();
 		const allTasks = [...tasks, ...completed];
 		for (const { name, color, tasks: gt } of this.groupTasks(allTasks, ViewState.getInstance().getGroupMode())) {
-			const active = gt.filter(t => t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped);
-			const done = gt.filter(t => t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped);
-			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length, this.groupContext(name, TaskStatus.NextAction));
+			const active = gt.filter(t => t.status !== TaskStatus.Done && t.status !== TaskStatus.Dropped);
+			const done = gt.filter(t => t.status === TaskStatus.Done || t.status === TaskStatus.Dropped);
+			if (name !== "") this.renderGroupHeader(name, color, active.length + done.length, this.groupContext(name, TaskStatus.Active));
 			for (const task of active) {
 				if (this.isStaleRender(gen)) return;
 				const text = await this.readTaskText(task);
@@ -237,7 +237,7 @@ export class UnifiedTaskView extends BaseTaskView {
 
 	private async renderCompleted(gen: number): Promise<void> {
 		const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-		const tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Completed))
+		const tasks = this.filterByActiveAOF(this.store.getTasksByStatus(TaskStatus.Done))
 			.filter(t => t.completed_date !== null && t.completed_date >= cutoff)
 			.sort((a, b) => (b.completed_date ?? "").localeCompare(a.completed_date ?? ""));
 		if (tasks.length === 0) { this.renderEmpty(); return; }
@@ -265,10 +265,10 @@ export class UnifiedTaskView extends BaseTaskView {
 	private getFocusTasks(): Task[] {
 		const today = localToday();
 		return this.store.getAllTasks().filter(t => {
-			if (t.status === TaskStatus.Completed || t.status === TaskStatus.Dropped) return false;
+			if (t.status === TaskStatus.Done || t.status === TaskStatus.Dropped) return false;
 			if (t.starred) return true;
 			if (t.due_date !== null && t.due_date <= today) return true;
-			if (t.start_date !== null && t.start_date === today && t.status === TaskStatus.NextAction) return true;
+			if (t.start_date !== null && t.start_date === today && t.status === TaskStatus.Active) return true;
 			return false;
 		});
 	}
@@ -282,7 +282,7 @@ export class UnifiedTaskView extends BaseTaskView {
 		const badges: Badge[] = [];
 		if (task.starred) badges.push("\u2B50 Starred");
 		if (task.due_date !== null && task.due_date <= today) badges.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
-		if (task.start_date !== null && task.start_date === today && task.status === TaskStatus.NextAction) badges.push("\uD83D\uDDD3\uFE0F Start today");
+		if (task.start_date !== null && task.start_date === today && task.status === TaskStatus.Active) badges.push("\uD83D\uDDD3\uFE0F Start today");
 		if (task.area_of_focus) badges.push(this.coloredBadge(task.area_of_focus, task.area_of_focus));
 		return badges;
 	}

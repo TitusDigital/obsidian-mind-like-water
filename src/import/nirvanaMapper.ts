@@ -7,16 +7,16 @@ export function mapState(item: NirvanaItem): { status: TaskStatus; starred: bool
 	if (item.state === NirvanaState.Completed || item.completed > 0) {
 		return item.cancelled === 1
 			? { status: TaskStatus.Dropped, starred: false }
-			: { status: TaskStatus.Completed, starred: false };
+			: { status: TaskStatus.Done, starred: false };
 	}
 	switch (item.state) {
 		case NirvanaState.Inbox: return { status: TaskStatus.Inbox, starred: false };
-		case NirvanaState.Next: return { status: TaskStatus.NextAction, starred: false };
-		case NirvanaState.Waiting: return { status: TaskStatus.NextAction, starred: false };
+		case NirvanaState.Next: return { status: TaskStatus.Active, starred: false };
+		case NirvanaState.Waiting: return { status: TaskStatus.Waiting, starred: false };
 		case NirvanaState.Scheduled: return { status: TaskStatus.Scheduled, starred: false };
 		case NirvanaState.Someday: return { status: TaskStatus.Someday, starred: false };
 		case NirvanaState.Later: return { status: TaskStatus.Someday, starred: false };
-		case NirvanaState.Focus: return { status: TaskStatus.NextAction, starred: true };
+		case NirvanaState.Focus: return { status: TaskStatus.Active, starred: true };
 		default: return null;
 	}
 }
@@ -152,7 +152,7 @@ export function prepareTask(item: NirvanaItem, aofNames: string[]): PreparedTask
 			area_of_focus: aof,
 			due_date: mapDate(item.duedate),
 			start_date: mapDate(item.startdate),
-			completed_date: mapped.status === TaskStatus.Completed || mapped.status === TaskStatus.Dropped
+			completed_date: mapped.status === TaskStatus.Done || mapped.status === TaskStatus.Dropped
 				? mapTimestamp(item.completed) || mapTimestamp(item.updated)
 				: null,
 			energy: mapEnergy(item.energy),

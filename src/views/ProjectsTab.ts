@@ -112,7 +112,7 @@ export function renderProjects(listEl: HTMLElement, store: DataStore, app: App):
 
 function buildCard(project: ProjectMeta, allTasks: Task[]): ProjectCard {
 	const projectTasks = allTasks.filter(t => t.project === project.title);
-	const completedTasks = projectTasks.filter(t => t.status === TaskStatus.Completed).length;
+	const completedTasks = projectTasks.filter(t => t.status === TaskStatus.Done).length;
 	const staleDays = computeStaleDays(project, projectTasks);
 	return { project, totalTasks: projectTasks.length, completedTasks, staleDays };
 }

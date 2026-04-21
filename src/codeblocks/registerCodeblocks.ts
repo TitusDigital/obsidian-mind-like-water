@@ -73,12 +73,12 @@ function buildProjectItems(store: DataStore, projectTitle: string): EmbedItem[] 
 	const active: EmbedItem[] = [];
 	const completed: EmbedItem[] = [];
 	for (const task of tasks) {
-		if (task.status === TaskStatus.Completed || task.status === TaskStatus.Dropped) {
+		if (task.status === TaskStatus.Done || task.status === TaskStatus.Dropped) {
 			completed.push({ task, badges: [] });
 		} else {
 			const badges: string[] = [];
 			if (task.due_date !== null) badges.push(task.due_date);
-			if (task.status !== TaskStatus.NextAction) badges.push(task.status);
+			if (task.status !== TaskStatus.Active) badges.push(task.status);
 			active.push({ task, badges });
 		}
 	}
@@ -92,13 +92,13 @@ function buildFocusItems(store: DataStore): EmbedItem[] {
 	const result: EmbedItem[] = [];
 
 	for (const task of store.getAllTasks()) {
-		if (task.status === TaskStatus.Completed || task.status === TaskStatus.Dropped) continue;
+		if (task.status === TaskStatus.Done || task.status === TaskStatus.Dropped) continue;
 		const badges: string[] = [];
 		if (task.starred) badges.push("\u2B50 Starred");
 		if (task.due_date !== null && task.due_date <= today) {
 			badges.push(task.due_date < today ? "\uD83D\uDCC5 Overdue" : "\uD83D\uDCC5 Due today");
 		}
-		if (task.start_date !== null && task.start_date === today && task.status === TaskStatus.NextAction) {
+		if (task.start_date !== null && task.start_date === today && task.status === TaskStatus.Active) {
 			badges.push("\uD83D\uDDD3\uFE0F Start today");
 		}
 		if (badges.length > 0) result.push({ task, badges });
@@ -118,7 +118,7 @@ function buildFocusItems(store: DataStore): EmbedItem[] {
 
 function buildCompletedTodayItems(store: DataStore): EmbedItem[] {
 	const today = localToday();
-	return store.getTasksByStatus(TaskStatus.Completed)
+	return store.getTasksByStatus(TaskStatus.Done)
 		.filter(t => t.completed_date !== null && isoToLocalDate(t.completed_date) === today)
 		.sort((a, b) => (b.completed_date ?? "").localeCompare(a.completed_date ?? ""))
 		.map(t => ({ task: t, badges: [] }));

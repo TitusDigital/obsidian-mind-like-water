@@ -40,9 +40,9 @@ export class RecurrenceHistoryModal extends Modal {
 
 			// Status badge
 			const statusMap: Record<string, string> = {
-				[TaskStatus.Completed]: "\u2705",
+				[TaskStatus.Done]: "\u2705",
 				[TaskStatus.Dropped]: "\u274C",
-				[TaskStatus.NextAction]: "\u25CB",
+				[TaskStatus.Active]: "\u25CB",
 				[TaskStatus.Scheduled]: "\uD83D\uDDD3\uFE0F",
 				[TaskStatus.Inbox]: "\uD83D\uDCE5",
 				[TaskStatus.Someday]: "\uD83D\uDCA4",

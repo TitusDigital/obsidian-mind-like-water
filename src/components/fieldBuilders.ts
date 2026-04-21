@@ -4,11 +4,13 @@ import { createCalendarInput } from "components/CalendarPicker";
 /** Status enum → human-readable labels */
 export const STATUS_LABELS: Record<string, string> = {
 	[TaskStatus.Inbox]: "Inbox",
-	[TaskStatus.NextAction]: "Next Action",
+	[TaskStatus.Active]: "Active",
+	[TaskStatus.Waiting]: "Waiting",
 	[TaskStatus.Scheduled]: "Scheduled",
 	[TaskStatus.Someday]: "Someday / Maybe",
-	[TaskStatus.Completed]: "Completed",
+	[TaskStatus.Done]: "Done",
 	[TaskStatus.Dropped]: "Dropped",
+	[TaskStatus.Archived]: "Archived",
 };
 
 export const ENERGY_LABELS: Record<string, string> = {

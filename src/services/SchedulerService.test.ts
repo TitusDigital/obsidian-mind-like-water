@@ -28,8 +28,8 @@ describe("runScheduler", () => {
 		const count = runScheduler(store as any);
 
 		expect(count).toBe(2);
-		expect(store.updateTask).toHaveBeenCalledWith("a", { status: TaskStatus.NextAction });
-		expect(store.updateTask).toHaveBeenCalledWith("b", { status: TaskStatus.NextAction });
+		expect(store.updateTask).toHaveBeenCalledWith("a", { status: TaskStatus.Active });
+		expect(store.updateTask).toHaveBeenCalledWith("b", { status: TaskStatus.Active });
 		expect(store.updateTask).not.toHaveBeenCalledWith("c", expect.anything());
 	});
 

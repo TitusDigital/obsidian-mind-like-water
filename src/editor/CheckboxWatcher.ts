@@ -51,10 +51,10 @@ async function processFile(file: TFile, store: DataStore, plugin: Plugin): Promi
 		if (text !== null && text !== task.cached_text) {
 			store.updateTask(id, { cached_text: text });
 		}
-		if (checked && task.status !== TaskStatus.Completed && task.status !== TaskStatus.Dropped) {
+		if (checked && task.status !== TaskStatus.Done && task.status !== TaskStatus.Dropped) {
 			store.completeTask(id);
-		} else if (!checked && task.status === TaskStatus.Completed) {
-			store.updateTask(id, { status: TaskStatus.NextAction, completed_date: null });
+		} else if (!checked && task.status === TaskStatus.Done) {
+			store.updateTask(id, { status: TaskStatus.Active, completed_date: null });
 		}
 	}
 }

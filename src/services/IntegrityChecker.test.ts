@@ -22,7 +22,7 @@ describe("buildIntegrityReport", () => {
 
 	it("flags tasks not found in vault as orphaned", () => {
 		const store = mockStore([
-			{ id: "abc123", status: TaskStatus.NextAction, modified: "2026-02-27T12:00:00Z" },
+			{ id: "abc123", status: TaskStatus.Active, modified: "2026-02-27T12:00:00Z" },
 		]);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const report = buildIntegrityReport(new Map(), store as any);
@@ -33,7 +33,7 @@ describe("buildIntegrityReport", () => {
 
 	it("auto-cleans orphans past grace period", () => {
 		const store = mockStore([
-			{ id: "old123", status: TaskStatus.NextAction, modified: "2026-02-10T12:00:00Z" },
+			{ id: "old123", status: TaskStatus.Active, modified: "2026-02-10T12:00:00Z" },
 		]);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const report = buildIntegrityReport(new Map(), store as any);
@@ -44,7 +44,7 @@ describe("buildIntegrityReport", () => {
 
 	it("skips completed and dropped tasks", () => {
 		const store = mockStore([
-			{ id: "done01", status: TaskStatus.Completed, modified: "2026-02-10T12:00:00Z" },
+			{ id: "done01", status: TaskStatus.Done, modified: "2026-02-10T12:00:00Z" },
 			{ id: "drop01", status: TaskStatus.Dropped, modified: "2026-02-10T12:00:00Z" },
 		]);
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any

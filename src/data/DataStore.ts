@@ -163,6 +163,7 @@ export class DataStore {
 			starred: fields.starred ?? false,
 			due_date: fields.due_date ?? null,
 			start_date: fields.start_date ?? null,
+			waiting_date: fields.waiting_date ?? (fields.status === TaskStatus.Waiting ? new Date().toISOString() : null),
 			completed_date: fields.completed_date ?? null,
 			energy: fields.energy ?? null,
 			context: fields.context ?? null,
@@ -199,7 +200,13 @@ export class DataStore {
 	updateTask(id: string, fields: Partial<Omit<Task, "id" | "created">>): Task | undefined {
 		const task = this.data.tasks[id];
 		if (task === undefined) return undefined;
-		Object.assign(task, fields, { modified: new Date().toISOString() });
+		const enteringWaiting =
+			fields.status === TaskStatus.Waiting &&
+			task.status !== TaskStatus.Waiting &&
+			fields.waiting_date === undefined;
+		const patch: Partial<Task> = { ...fields, modified: new Date().toISOString() };
+		if (enteringWaiting) patch.waiting_date = new Date().toISOString();
+		Object.assign(task, patch);
 		this.scheduleSave();
 		this.notifyChange();
 		return task;
@@ -208,7 +215,7 @@ export class DataStore {
 	/** Mark a task as completed. Triggers recurrence spawn if applicable. */
 	completeTask(id: string): Task | undefined {
 		const task = this.updateTask(id, {
-			status: TaskStatus.Completed,
+			status: TaskStatus.Done,
 			completed_date: new Date().toISOString(),
 		});
 		if (task !== undefined) {
@@ -264,10 +271,13 @@ export class DataStore {
 		return Object.values(this.data.tasks).filter(t => t.recurrence_template_id === templateId);
 	}
 
-	/** Count starred tasks that are not completed or dropped. */
+	/** Count starred tasks in a non-terminal status (active work only). */
 	getStarredCount(): number {
 		return Object.values(this.data.tasks).filter(
-			t => t.starred && t.status !== TaskStatus.Completed && t.status !== TaskStatus.Dropped
+			t => t.starred &&
+				t.status !== TaskStatus.Done &&
+				t.status !== TaskStatus.Dropped &&
+				t.status !== TaskStatus.Archived
 		).length;
 	}
 

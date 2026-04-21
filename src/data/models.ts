@@ -1,11 +1,22 @@
-/** GTD task lifecycle statuses */
+/**
+ * GTD task lifecycle statuses. Mirrors the MLW Cloud `TaskStatus` union so that
+ * sync can round-trip status strings without translation.
+ *
+ * Migration notes (for maintainers reading this after the rename landed):
+ *   - `next_action` was renamed to `active` in v2.
+ *   - `completed` was renamed to `done` in v2.
+ *   - `waiting` (delegated tasks) and `archived` (hidden completed) are new in v2.
+ *   - See `src/data/migrations/002-status-rename.ts`.
+ */
 export enum TaskStatus {
 	Inbox = "inbox",
-	NextAction = "next_action",
+	Active = "active",
+	Waiting = "waiting",
 	Scheduled = "scheduled",
 	Someday = "someday",
-	Completed = "completed",
+	Done = "done",
 	Dropped = "dropped",
+	Archived = "archived",
 }
 
 /** Energy level for filtering */
@@ -82,6 +93,7 @@ export interface Task {
 	starred: boolean;
 	due_date: string | null;
 	start_date: string | null;
+	waiting_date: string | null;
 	completed_date: string | null;
 	energy: EnergyLevel | null;
 	context: string | null;
@@ -130,7 +142,7 @@ export interface MLWSettings {
  *   - Loaded data is migrated upward; a migration runs at most once.
  *   - If `data.dataVersion > DATA_VERSION`, the plugin refuses to load (downgrade guard).
  */
-export const DATA_VERSION = 1;
+export const DATA_VERSION = 2;
 
 /** The complete structure persisted to data.json */
 export interface MLWData {

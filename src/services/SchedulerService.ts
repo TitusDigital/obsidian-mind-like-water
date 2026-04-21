@@ -15,7 +15,7 @@ export function runScheduler(store: DataStore): number {
 
 	for (const task of scheduled) {
 		if (task.start_date !== null && task.start_date <= today) {
-			store.updateTask(task.id, { status: TaskStatus.NextAction });
+			store.updateTask(task.id, { status: TaskStatus.Active });
 			count++;
 		}
 	}

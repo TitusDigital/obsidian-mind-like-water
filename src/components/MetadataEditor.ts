@@ -63,9 +63,9 @@ export class MetadataEditor {
 	}
 
 	close(): void {
-		// Auto-promote: if task is still in Inbox but has an AOF, move to Next Action
+		// Auto-promote: if task is still in Inbox but has an AOF, move to Active
 		if (this.task.status === TaskStatus.Inbox && this.task.area_of_focus !== "") {
-			this.store.updateTask(this.task.id, { status: TaskStatus.NextAction });
+			this.store.updateTask(this.task.id, { status: TaskStatus.Active });
 			this.view?.dispatch({});
 		}
 

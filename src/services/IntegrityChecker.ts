@@ -63,7 +63,7 @@ export function buildIntegrityReport(
 			}
 			continue;
 		}
-		if (task.status === TaskStatus.Completed || task.status === TaskStatus.Dropped) continue;
+		if (task.status === TaskStatus.Done || task.status === TaskStatus.Dropped) continue;
 		const age = now - new Date(task.modified).getTime();
 		if (age > gracePeriodMs) {
 			store.deleteTask(task.id);
