@@ -166,6 +166,7 @@ export class DataStore {
 			waiting_date: fields.waiting_date ?? (fields.status === TaskStatus.Waiting ? new Date().toISOString() : null),
 			completed_date: fields.completed_date ?? null,
 			energy: fields.energy ?? null,
+			tags: fields.tags ?? [],
 			context: fields.context ?? null,
 			sort_order: fields.sort_order ?? this.getNextSortOrder(),
 			source_file: fields.source_file,

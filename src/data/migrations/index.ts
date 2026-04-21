@@ -1,6 +1,7 @@
 import type { Migration } from "./types";
 import { migration001RecurrenceDefaults } from "./001-recurrence-defaults";
 import { migration002StatusRename } from "./002-status-rename";
+import { migration003Tags } from "./003-tags";
 
 /**
  * Registry of every schema migration, in ascending version order.
@@ -18,6 +19,7 @@ import { migration002StatusRename } from "./002-status-rename";
 export const ALL_MIGRATIONS: readonly Migration[] = [
 	migration001RecurrenceDefaults,
 	migration002StatusRename,
+	migration003Tags,
 ];
 
 export { runMigrations, formatRunSummary } from "./runner";

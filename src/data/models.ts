@@ -96,6 +96,18 @@ export interface Task {
 	waiting_date: string | null;
 	completed_date: string | null;
 	energy: EnergyLevel | null;
+	/**
+	 * Flat tag array — replaces the legacy single `context` field. Mirrors the
+	 * MLW Cloud `Task.tags` shape so sync can round-trip without translation.
+	 * Category (person / place / context / topic / label) is inferred server-side
+	 * from prefix (`@`, `#`) and is NOT stored on the plugin side.
+	 */
+	tags: string[];
+	/**
+	 * @deprecated — v2 holdover. Read by legacy callers; populated by migration 003
+	 * from whatever was in `context` at migration time. Will be removed in a future
+	 * release after all call sites read `tags` instead.
+	 */
 	context: string | null;
 	sort_order: number;
 	source_file: string;
@@ -142,7 +154,7 @@ export interface MLWSettings {
  *   - Loaded data is migrated upward; a migration runs at most once.
  *   - If `data.dataVersion > DATA_VERSION`, the plugin refuses to load (downgrade guard).
  */
-export const DATA_VERSION = 2;
+export const DATA_VERSION = 3;
 
 /** The complete structure persisted to data.json */
 export interface MLWData {
