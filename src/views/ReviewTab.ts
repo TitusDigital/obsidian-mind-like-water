@@ -4,9 +4,9 @@ import { TaskStatus, ProjectStatus, type Task } from "data/models";
 import { readAllProjects } from "data/ProjectReader";
 import type { IntegrityReport } from "services/IntegrityChecker";
 import { isRecurringTask, RecurrenceDeleteModal } from "components/RecurrenceDelete";
+import { MLW_COMMENT_STRIP_RE as MLW_COMMENT_RE } from "data/idPattern";
 
 const CHECKBOX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
-const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
 
 function localToday(): string {
 	const d = new Date();

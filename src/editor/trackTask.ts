@@ -2,9 +2,9 @@ import { EditorView } from "@codemirror/view";
 import { editorInfoField } from "obsidian";
 import type { Editor, MarkdownFileInfo } from "obsidian";
 import type { DataStore } from "data/DataStore";
+import { MLW_COMMENT_RE } from "data/idPattern";
 
 const CHECKBOX_RE = /^\s*[-*]\s+\[[ xX]\]\s+/;
-const MLW_COMMENT_RE = /<!-- mlw:[a-z0-9]{6} -->/;
 
 /** Check whether a line of text is an untracked checkbox. */
 export function canTrackLine(lineText: string): boolean {

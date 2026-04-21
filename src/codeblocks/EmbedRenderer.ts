@@ -3,9 +3,9 @@ import type { App } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import type { Task } from "data/models";
 import { MetadataEditor } from "components/MetadataEditor";
+import { MLW_COMMENT_STRIP_RE as MLW_COMMENT_RE } from "data/idPattern";
 
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
-const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
 
 /** A task plus its display badges for embedding. */
 export interface EmbedItem {

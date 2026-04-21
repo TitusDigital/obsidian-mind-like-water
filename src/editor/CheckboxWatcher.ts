@@ -2,8 +2,9 @@ import type { Plugin, TAbstractFile } from "obsidian";
 import { TFile } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import { TaskStatus } from "data/models";
+import { MLW_ID_PATTERN } from "data/idPattern";
 
-const MLW_LINE_RE = /^- \[([xX ])\] (.+?)(?:\s*<!-- mlw:([a-z0-9]{6}) -->)/;
+const MLW_LINE_RE = new RegExp(`^- \\[([xX ])\\] (.+?)(?:\\s*<!-- mlw:(${MLW_ID_PATTERN}) -->)`);
 const DEBOUNCE_MS = 300;
 
 /**

@@ -3,6 +3,7 @@ import { TaskStatus, FALLBACK_AOF_COLOR, ChipDisplayMode, nextChipDisplayMode } 
 import type { AOFColor } from "data/models";
 import type { DataStore } from "data/DataStore";
 import { MetadataEditor } from "components/MetadataEditor";
+import { MLW_COMMENT_STRIP_RE } from "data/idPattern";
 
 /** Renders a colored metadata chip for a tracked MLW task. */
 export class ChipWidget extends WidgetType {
@@ -94,7 +95,7 @@ export class ChipWidget extends WidgetType {
 			if (line.text.includes(needle)) {
 				return line.text
 					.replace(/^\s*[-*]\s+\[[ xX]\]\s+/, "")
-					.replace(/\s*<!-- mlw:[a-z0-9]{6} -->/, "")
+					.replace(MLW_COMMENT_STRIP_RE, "")
 					.trim();
 			}
 		}

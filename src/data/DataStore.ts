@@ -12,11 +12,9 @@ import {
 } from "data/models";
 import { readAllProjects } from "data/ProjectReader";
 import { onTaskCompleted } from "services/RecurrenceService";
-import { ALL_MIGRATIONS, runMigrations, formatRunSummary } from "data/migrations";
+import { ALL_MIGRATIONS, VAULT_MIGRATIONS, runMigrations, formatRunSummary } from "data/migrations";
 import type { MigrationContext, MigrationRunSummary } from "data/migrations";
 
-const ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
-const ID_LENGTH = 6;
 const SAVE_DEBOUNCE_MS = 500;
 
 export class DataStore {
@@ -80,6 +78,24 @@ export class DataStore {
 		return runMigrations(this.data, ctx, ALL_MIGRATIONS);
 	}
 
+	/**
+	 * Run the vault-level UUID migration. This rewrites markdown files and is
+	 * NOT invoked automatically. Callers must confirm intent (e.g. a modal).
+	 *
+	 * On dry-run the function reports what it would change but does not write
+	 * anything to disk. On a real run, progress is journaled into data.json
+	 * (`idMigration` key) so an interrupted run is resumable.
+	 */
+	async runUuidMigration(options: { dryRun: boolean }): Promise<MigrationRunSummary> {
+		const ctx: MigrationContext = {
+			app: this.plugin.app, plugin: this.plugin, dryRun: options.dryRun,
+		};
+		const summary = await runMigrations(this.data, ctx, VAULT_MIGRATIONS);
+		if (!options.dryRun) await this.saveImmediate();
+		this.notifyChange();
+		return summary;
+	}
+
 	/** Watch for external data.json changes (e.g. Obsidian Sync) and reload automatically. */
 	private setupSyncWatcher(): void {
 		const dataPath = normalizePath(
@@ -137,14 +153,11 @@ export class DataStore {
 		for (const fn of this.onChangeCallbacks) fn();
 	}
 
-	/** Generate a unique 6-char alphanumeric ID. */
+	/** Generate a fresh RFC 4122 UUID. The uniqueness loop is defensive. */
 	generateId(): string {
 		let id: string;
 		do {
-			id = "";
-			for (let i = 0; i < ID_LENGTH; i++) {
-				id += ID_CHARS.charAt(Math.floor(Math.random() * ID_CHARS.length));
-			}
+			id = crypto.randomUUID();
 		} while (id in this.data.tasks);
 		return id;
 	}

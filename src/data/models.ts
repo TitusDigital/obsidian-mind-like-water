@@ -156,11 +156,29 @@ export interface MLWSettings {
  */
 export const DATA_VERSION = 3;
 
+/**
+ * Journal for a resumable ID migration (`src/data/migrations/004-uuid-ids.ts`).
+ * Persisted into `data.json` while the migration is in flight so that an
+ * interrupted run (crash, Obsidian restart, user quits) can resume without
+ * re-writing files that were already updated.
+ */
+export interface IdMigrationJournal {
+	status: "in_progress";
+	/** Map from legacy 6-char ID → fresh UUID. Frozen at migration start. */
+	mapping: Record<string, string>;
+	/** Vault paths whose `<!-- mlw:... -->` comments have already been rewritten. */
+	processedFiles: string[];
+	/** ISO timestamp at which the migration was started. */
+	startedAt: string;
+}
+
 /** The complete structure persisted to data.json */
 export interface MLWData {
 	dataVersion: number;
 	tasks: Record<string, Task>;
 	settings: MLWSettings;
+	/** Present only while an ID migration is in flight. Removed on completion. */
+	idMigration?: IdMigrationJournal;
 }
 
 /** Default colors for the first four AOFs, matching the mockup palette */

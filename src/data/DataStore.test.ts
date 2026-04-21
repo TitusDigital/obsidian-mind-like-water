@@ -31,7 +31,7 @@ describe("DataStore", () => {
 		it("creates a task with default fields", () => {
 			const store = createStore();
 			const task = store.createTask({ source_file: "test.md", source_line: 1 });
-			expect(task.id).toHaveLength(6);
+			expect(task.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
 			expect(task.status).toBe(TaskStatus.Inbox);
 			expect(task.area_of_focus).toBe("");
 			expect(task.project).toBeNull();
@@ -199,12 +199,14 @@ describe("DataStore", () => {
 	});
 
 	describe("generateId", () => {
-		it("generates unique 6-char IDs", () => {
+		it("generates unique UUIDs", () => {
 			const store = createStore();
 			const ids = new Set<string>();
 			for (let i = 0; i < 50; i++) ids.add(store.generateId());
 			expect(ids.size).toBe(50);
-			for (const id of ids) expect(id).toMatch(/^[a-z0-9]{6}$/);
+			for (const id of ids) {
+				expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+			}
 		});
 	});
 

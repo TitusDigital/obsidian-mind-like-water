@@ -15,6 +15,7 @@ import { onPluginLoad as runRecurrenceCheck, pauseAllRecurrence, resumeAllRecurr
 import { runIntegrityCheck } from "services/IntegrityChecker";
 import { registerFocusBlock, registerCompletedBlock, registerProjectTasksBlock } from "codeblocks/registerCodeblocks";
 import { NirvanaImportModal } from "import/NirvanaImportModal";
+import { UuidMigrationModal } from "data/UuidMigrationModal";
 
 export default class MindLikeWaterPlugin extends Plugin {
 	store!: DataStore;
@@ -74,6 +75,12 @@ export default class MindLikeWaterPlugin extends Plugin {
 					new Notice("Mind Like Water: migration preview failed — see console.");
 				});
 			},
+		});
+
+		this.addCommand({
+			id: "migrate-uuid-ids",
+			name: "Migrate task IDs to UUID (one-time, back up vault first)",
+			callback: () => { new UuidMigrationModal(this.app, this.store).open(); },
 		});
 
 		this.addCommand({

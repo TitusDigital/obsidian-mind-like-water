@@ -12,9 +12,9 @@ import { MetadataEditor } from "components/MetadataEditor";
 import { groupByAOF, groupTasks, type GroupContext } from "views/GroupUtils";
 import { renderInlineCapture } from "views/InlineCapture";
 import { QuickCaptureModal, type CaptureDefaults } from "capture/QuickCaptureModal";
+import { MLW_COMMENT_STRIP_RE as MLW_COMMENT_RE } from "data/idPattern";
 
 const CHECKBOX_PREFIX_RE = /^\s*[-*]\s+\[[ xX]\]\s*/;
-const MLW_COMMENT_RE = /\s*<!-- mlw:[a-z0-9]{6} -->/;
 const GROUP_LABELS: [GroupMode, string][] = [["aof", "Area"], ["project", "Project"], ["context", "Context"], ["none", "Flat"]];
 
 /** Configuration returned by each concrete view. */

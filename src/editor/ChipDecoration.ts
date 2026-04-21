@@ -12,6 +12,7 @@ import type { DataStore } from "data/DataStore";
 import { ChipWidget } from "editor/ChipWidget";
 import { TrackWidget } from "editor/TrackWidget";
 import { canTrackLine } from "editor/trackTask";
+import { MLW_COMMENT_RE } from "data/idPattern";
 
 // ── Facet: bridge between Obsidian plugin and CM6 ──────────────
 
@@ -20,10 +21,6 @@ const dataStoreFacet = Facet.define<DataStore, DataStore | null>({
 		return inputs[0] ?? null;
 	},
 });
-
-// ── Regex patterns ──────────────────────────────────────────────
-
-const MLW_COMMENT_RE = /<!-- mlw:([a-z0-9]{6}) -->/;
 
 // ── ViewPlugin ──────────────────────────────────────────────────
 

@@ -2,8 +2,7 @@ import { TFile, Notice } from "obsidian";
 import { RRule } from "rrule";
 import type { DataStore } from "data/DataStore";
 import { TaskStatus, type Task } from "data/models";
-
-const MLW_COMMENT_RE = /<!-- mlw:[a-z0-9]{6} -->/;
+import { MLW_COMMENT_RE } from "data/idPattern";
 const MAX_SPAWN_PER_RUN = 50;
 
 function localToday(): string {

@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
+import { MLW_ID_PATTERN } from "data/idPattern";
 
 /**
  * Tests for the MLW checkbox line regex used by CheckboxWatcher.
  * The regex is duplicated here for unit testing since processFile is not exported.
  */
-const MLW_LINE_RE = /^- \[([xX ])\] (.+?)(?:\s*<!-- mlw:([a-z0-9]{6}) -->)/;
+const MLW_LINE_RE = new RegExp(`^- \\[([xX ])\\] (.+?)(?:\\s*<!-- mlw:(${MLW_ID_PATTERN}) -->)`);
 
 describe("CheckboxWatcher regex", () => {
 	it("matches a checked checkbox with mlw comment", () => {

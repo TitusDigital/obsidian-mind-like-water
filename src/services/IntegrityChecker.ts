@@ -1,8 +1,7 @@
 import type { App } from "obsidian";
 import type { DataStore } from "data/DataStore";
 import { TaskStatus, type Task } from "data/models";
-
-const MLW_ID_RE = /<!-- mlw:([a-z0-9]{6}) -->/g;
+import { mlwCommentGlobalRe } from "data/idPattern";
 
 /** Result of cross-referencing DataStore tasks with vault mlw comments. */
 export interface IntegrityReport {
@@ -32,7 +31,7 @@ async function scanVaultForMLWIds(app: App): Promise<Map<string, TaskLocation>> 
 		const content = await app.vault.cachedRead(file);
 		const lines = content.split("\n");
 		for (let i = 0; i < lines.length; i++) {
-			const re = new RegExp(MLW_ID_RE.source, "g");
+			const re = mlwCommentGlobalRe();
 			let match: RegExpExecArray | null;
 			while ((match = re.exec(lines[i]!)) !== null) {
 				const id = match[1];
