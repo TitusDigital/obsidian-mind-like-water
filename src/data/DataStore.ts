@@ -1,4 +1,4 @@
-import { type App, type Plugin, normalizePath, type TFile } from "obsidian";
+import { type App, type Plugin, Notice, normalizePath, type TFile } from "obsidian";
 import {
 	type MLWData,
 	type MLWSettings,
@@ -12,6 +12,8 @@ import {
 } from "data/models";
 import { readAllProjects } from "data/ProjectReader";
 import { onTaskCompleted } from "services/RecurrenceService";
+import { ALL_MIGRATIONS, runMigrations, formatRunSummary } from "data/migrations";
+import type { MigrationContext, MigrationRunSummary } from "data/migrations";
 
 const ID_CHARS = "abcdefghijklmnopqrstuvwxyz0123456789";
 const ID_LENGTH = 6;
@@ -32,23 +34,17 @@ export class DataStore {
 	/** Expose the Obsidian App for services that need vault access. */
 	get app(): App { return this.plugin.app; }
 
-	/** Load data.json, merge with defaults, optionally create backup. */
+	/** Load data.json, merge with defaults, run pending migrations, optionally create backup. */
 	async load(): Promise<void> {
 		const raw: unknown = await this.plugin.loadData();
 		if (raw !== null && raw !== undefined && typeof raw === "object") {
 			const loaded = raw as Partial<MLWData>;
 			this.data = {
-				dataVersion: DATA_VERSION,
+				dataVersion: loaded.dataVersion ?? 0,
 				tasks: (loaded.tasks as Record<string, Task> | undefined) ?? {},
 				settings: { ...DEFAULT_SETTINGS, ...(loaded.settings ?? {}) },
 			};
-			// Backward-compat: default new recurrence fields on existing tasks
-			for (const task of Object.values(this.data.tasks)) {
-				task.recurrence_type ??= null;
-				task.recurrence_template_id ??= null;
-				task.recurrence_suspended ??= false;
-				task.recurrence_spawn_count ??= 0;
-			}
+			await this.runPendingMigrations();
 		} else {
 			this.data = structuredClone(DEFAULT_DATA);
 		}
@@ -57,6 +53,31 @@ export class DataStore {
 			await this.createBackup();
 		}
 		this.setupSyncWatcher();
+	}
+
+	/** Apply every migration whose version is greater than `data.dataVersion`. */
+	private async runPendingMigrations(): Promise<void> {
+		const ctx: MigrationContext = { app: this.plugin.app, plugin: this.plugin, dryRun: false };
+		try {
+			const summary = await runMigrations(this.data, ctx, ALL_MIGRATIONS);
+			if (summary.entries.length > 0) {
+				console.info("[MLW migration]", formatRunSummary(summary), summary);
+				await this.saveImmediate();
+				new Notice(`Mind Like Water: upgraded data to v${summary.toVersion}.`);
+			} else {
+				this.data.dataVersion = DATA_VERSION;
+			}
+		} catch (e) {
+			console.error("[MLW migration] failed", e);
+			new Notice("Mind Like Water: data migration failed — see console.");
+			throw e;
+		}
+	}
+
+	/** Run all pending migrations without persisting; returns the summary for reporting. */
+	async previewMigrations(): Promise<MigrationRunSummary> {
+		const ctx: MigrationContext = { app: this.plugin.app, plugin: this.plugin, dryRun: true };
+		return runMigrations(this.data, ctx, ALL_MIGRATIONS);
 	}
 
 	/** Watch for external data.json changes (e.g. Obsidian Sync) and reload automatically. */

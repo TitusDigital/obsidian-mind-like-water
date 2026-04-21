@@ -121,7 +121,15 @@ export interface MLWSettings {
 	recurrencePausedAt: string | null;
 }
 
-/** Current data schema version. Increment when adding fields that need migration. */
+/**
+ * Current data schema version — must equal the highest `version` in
+ * `src/data/migrations/index.ts`. Bump it whenever you add a new migration.
+ *
+ * Contract:
+ *   - Fresh installs write `data.dataVersion = DATA_VERSION` and skip migrations.
+ *   - Loaded data is migrated upward; a migration runs at most once.
+ *   - If `data.dataVersion > DATA_VERSION`, the plugin refuses to load (downgrade guard).
+ */
 export const DATA_VERSION = 1;
 
 /** The complete structure persisted to data.json */

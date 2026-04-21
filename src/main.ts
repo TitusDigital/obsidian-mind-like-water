@@ -1,5 +1,6 @@
 import { Plugin, normalizePath, Platform, TFile, Notice } from "obsidian";
 import { DataStore } from "data/DataStore";
+import { formatRunSummary } from "data/migrations";
 import { TaskStatus, nextChipDisplayMode } from "data/models";
 import { MLWSettingTab } from "settings/MLWSettings";
 import { mlwEditorExtension } from "editor/ChipDecoration";
@@ -58,6 +59,21 @@ export default class MindLikeWaterPlugin extends Plugin {
 			id: "import-nirvana",
 			name: "Import from Nirvana",
 			callback: () => { new NirvanaImportModal(this.app, this.store).open(); },
+		});
+
+		this.addCommand({
+			id: "preview-migrations",
+			name: "Preview data migrations (dry run)",
+			callback: () => {
+				void this.store.previewMigrations().then(summary => {
+					const msg = formatRunSummary(summary);
+					console.info("[MLW migration] preview", msg, summary);
+					new Notice(`Mind Like Water: ${msg}`, 8000);
+				}).catch((e: unknown) => {
+					console.error("MLW: Migration preview failed", e);
+					new Notice("Mind Like Water: migration preview failed — see console.");
+				});
+			},
 		});
 
 		this.addCommand({
