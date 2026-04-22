@@ -71,10 +71,16 @@ export function buildRecurrenceSection(task: Task, store: DataStore, updateField
 	const presetSelect = document.createElement("select");
 	presetSelect.className = "mlw-editor-select";
 
-	function rebuildPresetOptions(): void {
+	function rebuildPresetOptions(autoUpdateDay?: boolean): void {
 		const refDate = currentStartDate !== null ? new Date(currentStartDate + "T00:00:00") : new Date();
 		const presets = buildPresets(refDate);
-		const prev = presetSelect.value;
+		let prev = presetSelect.value;
+		// When start_date changes, swap BYDAY in the current rule to match the new day
+		if (autoUpdateDay === true && prev !== "" && prev !== "custom") {
+			const newDay = DAY_CODES[refDate.getDay()]!;
+			prev = prev.replace(/BYDAY=[A-Z,]+/, `BYDAY=${newDay}`);
+			updateField("recurrence_rule", prev);
+		}
 		presetSelect.innerHTML = "";
 		presetSelect.appendChild(optionEl("", "Choose..."));
 		for (const p of presets) presetSelect.appendChild(optionEl(p.rrule, p.label));
@@ -82,7 +88,7 @@ export function buildRecurrenceSection(task: Task, store: DataStore, updateField
 		presetSelect.value = matchPreset(presets, prev || task.recurrence_rule);
 	}
 	rebuildPresetOptions();
-	section.notifyStartDate = (d: string | null) => { currentStartDate = d; rebuildPresetOptions(); };
+	section.notifyStartDate = (d: string | null) => { currentStartDate = d; rebuildPresetOptions(true); };
 	config.appendChild(presetGroup);
 	presetGroup.appendChild(presetSelect);
 
@@ -200,27 +206,19 @@ export function buildRecurrenceSection(task: Task, store: DataStore, updateField
 	return section;
 }
 
-// ── Custom RRULE Builder ─────────────────────────────────────────
-
 function buildCustomFields(container: HTMLElement, task: Task, updateField: UpdateFn): void {
 	const row = el("div", "mlw-recurrence-custom__row");
-
 	const freqSelect = document.createElement("select");
 	freqSelect.className = "mlw-editor-select";
 	for (const [v, l] of [["DAILY", "Day(s)"], ["WEEKLY", "Week(s)"], ["MONTHLY", "Month(s)"], ["YEARLY", "Year(s)"]] as const) {
 		freqSelect.appendChild(optionEl(v, l));
 	}
-
 	const intervalInput = document.createElement("input");
 	intervalInput.type = "number";
 	intervalInput.className = "mlw-editor-input mlw-recurrence-interval";
-	intervalInput.min = "1";
-	intervalInput.max = "365";
-	intervalInput.value = "1";
-
+	intervalInput.min = "1"; intervalInput.max = "365"; intervalInput.value = "1";
 	row.append(el("span", "mlw-recurrence-custom__label", "Every"), intervalInput, freqSelect);
 	container.appendChild(row);
-
 	const applyCustom = () => {
 		const freq = freqSelect.value;
 		const interval = parseInt(intervalInput.value) || 1;
@@ -228,12 +226,9 @@ function buildCustomFields(container: HTMLElement, task: Task, updateField: Upda
 		if (interval > 1) rule += `;INTERVAL=${interval}`;
 		updateField("recurrence_rule", rule);
 	};
-
 	freqSelect.addEventListener("change", applyCustom);
 	intervalInput.addEventListener("change", applyCustom);
 }
-
-// ── End Condition Helpers ────────────────────────────────────────
 
 function detectEndCondition(rule: string | null): { type: "never" | "count" | "until"; value: string } {
 	if (rule === null) return { type: "never", value: "" };
