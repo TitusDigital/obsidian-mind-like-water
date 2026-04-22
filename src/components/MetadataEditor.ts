@@ -53,8 +53,9 @@ export class MetadataEditor {
 	private mount(): void {
 		document.body.appendChild(this.backdrop);
 		const below = window.innerHeight - this.anchorRect.bottom;
-		if (below > 420) this.popover.style.top = (this.anchorRect.bottom + 6) + "px";
-		else this.popover.style.bottom = (window.innerHeight - this.anchorRect.top + 6) + "px";
+		const top = below > 420 ? this.anchorRect.bottom + 6 : 8;
+		this.popover.style.top = top + "px";
+		this.popover.style.maxHeight = (window.innerHeight - top - 8) + "px";
 		this.popover.style.left = Math.max(8, Math.min(this.anchorRect.left, window.innerWidth - 340)) + "px";
 		this.scrollHandler = () => this.close();
 		this.view?.scrollDOM.addEventListener("scroll", this.scrollHandler, { once: true });
