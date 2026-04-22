@@ -20,6 +20,14 @@ data.json.bak
 /Journal/
 *.pdf
 
+# Ad-hoc Obsidian notes that show up when this repo is opened as a vault
+/20??-??-??.md
+/Clippings/
+/Nirvana_Export_*.json
+/Untitled.md
+/test.md
+/Fix up the garden.md
+
 # Allow demo vault MLW folder
 !demo-vault/MLW/
 
